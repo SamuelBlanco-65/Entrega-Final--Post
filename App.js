@@ -14,7 +14,7 @@ function Square({ value, onSquareClick, isWinning }) {
     </button>
   );
 }
-
+//hollis
 // ─── Board ────────────────────────────────────────────────────────────────────
 function Board({ xIsNext, squares, onPlay, size, playerNames }) {
   const winnerInfo = calculateWinner(squares, size);
