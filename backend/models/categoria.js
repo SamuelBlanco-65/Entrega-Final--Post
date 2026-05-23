@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
 
- Categoria.init(
+  Categoria.init(
     {
       nombre: { type: DataTypes.STRING(80), allowNull: false },
       color: DataTypes.STRING(20),

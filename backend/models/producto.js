@@ -31,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
       stock: DataTypes.INTEGER,
       imagen: DataTypes.TEXT,
     },
-    { sequelize, modelName: 'Producto' }
+    { sequelize, modelName: 'Producto', tableName: 'Productos' }
   );
 
   return Producto;

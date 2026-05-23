@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       total: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       observaciones: DataTypes.TEXT,
     },
-    { sequelize, modelName: 'Compra' }
+    { sequelize, modelName: 'Compra', tableName: 'Compras' }
   );
 
   return Compra;

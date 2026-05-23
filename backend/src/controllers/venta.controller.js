@@ -1,5 +1,5 @@
 'use strict';
-const { sequelize, Venta, VentaItem, Producto, Cliente } = require('../../models');
+const { sequelize, Venta, VentaItem, Producto, Cliente, Descuento } = require('../../models');
 
 /**
  * GET /api/ventas
@@ -71,7 +71,7 @@ exports.show = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
-    const { clienteId, metodoPago, efectivoRecibido, items, observaciones } = req.body;
+    const { clienteId, metodoPago, efectivoRecibido, items, observaciones, descuentoId } = req.body;
 
     // Validación de cliente si metodoPago es "debe" (RF-23)
     if (metodoPago === 'debe' && !clienteId) {
@@ -116,6 +116,39 @@ exports.create = async (req, res, next) => {
       });
     }
 
+    // ----------------------------------------------------------------
+    // Aplicar descuento (RN-08): solo uno por venta, calculado sobre el
+    // total de los ítems. RF-19 / restricción: no producir totales negativos.
+    // ----------------------------------------------------------------
+    let descuentoMonto = 0;
+    let descuentoAplicadoId = null;
+
+    if (descuentoId) {
+      const descuento = await Descuento.findByPk(descuentoId, { transaction: t });
+      if (!descuento) {
+        await t.rollback();
+        return res.status(404).json({ error: `Descuento id=${descuentoId} no encontrado.` });
+      }
+      if (!descuento.activo) {
+        await t.rollback();
+        return res.status(400).json({ error: 'El descuento seleccionado está inactivo.' });
+      }
+
+      if (descuento.tipo === 'porcentaje') {
+        // Redondeamos a entero (no hay centavos en COP)
+        descuentoMonto = Math.round((total * descuento.valor) / 100);
+      } else {
+        // valor_fijo
+        descuentoMonto = descuento.valor;
+      }
+
+      // No permitir total negativo: el descuento se topa al total.
+      if (descuentoMonto > total) descuentoMonto = total;
+
+      descuentoAplicadoId = descuento.id;
+      total -= descuentoMonto;
+    }
+
     // Validación de efectivo recibido si paga en efectivo
     let cambio = null;
     if (metodoPago === 'efectivo') {
@@ -137,6 +170,8 @@ exports.create = async (req, res, next) => {
         total,
         efectivoRecibido: metodoPago === 'efectivo' ? efectivoRecibido : null,
         cambio,
+        descuentoId: descuentoAplicadoId,
+        descuentoMonto,
         observaciones: observaciones || null,
       },
       { transaction: t }

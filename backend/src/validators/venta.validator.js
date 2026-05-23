@@ -28,6 +28,8 @@ exports.createRules = [
     .withMessage('Cada ítem debe tener un productoId válido.'),
   body('items.*.cantidad').isInt({ min: 1 })
     .withMessage('La cantidad de cada ítem debe ser un entero mayor a cero.'),
+  body('descuentoId').optional({ nullable: true }).isInt({ min: 1 })
+    .withMessage('descuentoId debe ser un entero positivo si se especifica.'),
   body('observaciones').optional({ nullable: true }).isString(),
 ];
 

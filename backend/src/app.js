@@ -6,24 +6,26 @@ const cors = require('cors');
 const { sequelize } = require('../models');
 
 // Routers
+const authRouter = require('./routes/auth');
+const usuariosRouter = require('./routes/usuarios');
 const categoriasRouter = require('./routes/categorias');
 const clientesRouter = require('./routes/clientes');
 const proveedoresRouter = require('./routes/proveedores');
 const productosRouter = require('./routes/productos');
 const ventasRouter = require('./routes/ventas');
 const comprasRouter = require('./routes/compras');
+const descuentosRouter = require('./routes/descuentos');
+const faltantesRouter = require('./routes/faltantes');
 
 // Middlewares
 const requestLogger = require('./middlewares/requestLogger');
+const authJwt = require('./middlewares/authJwt');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // -----------------------------------------------------------
 // CORS
-// El frontend va desplegado en Vercel/Netlify y el backend en Render,
-// dominios distintos. Sin CORS el navegador bloquea las peticiones.
-// CORS_ORIGINS=* permite todo (dev); en producción se pone la URL real.
 // -----------------------------------------------------------
 const origins = (process.env.CORS_ORIGINS || '*')
   .split(',')
@@ -38,7 +40,7 @@ app.use(
 );
 
 // -----------------------------------------------------------
-// Body parser - tope alto porque guardamos imágenes en base64 en Producto
+// Body parser - tope alto por imágenes base64 en Producto
 // -----------------------------------------------------------
 app.use(express.json({ limit: '10mb' }));
 
@@ -48,35 +50,55 @@ app.use(express.json({ limit: '10mb' }));
 app.use(requestLogger);
 
 // -----------------------------------------------------------
-// Rutas
+// Doc de endpoints (pública, sin token)
 // -----------------------------------------------------------
-app.use('/api/categorias', categoriasRouter);
-app.use('/api/clientes', clientesRouter);
-app.use('/api/proveedores', proveedoresRouter);
-app.use('/api/productos', productosRouter);
-app.use('/api/ventas', ventasRouter);
-app.use('/api/compras', comprasRouter);
-
-// Ruta raíz de la API: documentación auto-generada de endpoints disponibles.
 app.get('/api', (req, res) => {
   res.json({
     nombre: 'POS Papel y Luna - Backend',
-    version: '1.0.0',
-    hito: 'Hito 1 - Backend base con CRUDs del MVP 1/2',
-    endpoints: {
-      categorias: 'GET|POST /api/categorias, GET|PUT|DELETE /api/categorias/:id',
-      clientes: 'GET|POST /api/clientes, GET|PUT|DELETE /api/clientes/:id',
-      proveedores: 'GET|POST /api/proveedores, GET|PUT|DELETE /api/proveedores/:id',
-      productos: 'GET|POST /api/productos, GET|PUT|DELETE /api/productos/:id',
-      ventas:
-        'GET /api/ventas (?desde&hasta&metodoPago&clienteId&estado), POST /api/ventas, DELETE /api/ventas/:id (anula)',
-      compras: 'GET /api/compras (?desde&hasta&proveedorId&metodoPago), POST /api/compras',
+    version: '2.0.0',
+    hito: 'Hito 2 - Autenticación JWT, roles, descuentos y faltantes',
+    publicas: ['POST /api/login', 'GET /api (esta doc)'],
+    autenticadas: [
+      'GET /api/me',
+      'GET|POST /api/categorias, GET|PUT /api/categorias/:id (DELETE solo ADMIN)',
+      'GET|POST /api/clientes, GET|PUT /api/clientes/:id (DELETE solo ADMIN)',
+      'GET|POST /api/proveedores, GET|PUT /api/proveedores/:id (DELETE solo ADMIN)',
+      'GET|POST /api/productos, GET|PUT /api/productos/:id (DELETE solo ADMIN)',
+      'GET|POST /api/ventas, GET /api/ventas/:id (DELETE/anular solo ADMIN)',
+      'GET|POST /api/compras, GET /api/compras/:id',
+      'GET /api/descuentos, GET /api/descuentos/:id (POST|PUT|DELETE solo ADMIN)',
+      'GET|POST /api/faltantes, PUT|PATCH|DELETE /api/faltantes/:id, GET /api/faltantes/reporte/frecuentes',
+    ],
+    soloAdmin: ['GET|POST|PUT|DELETE /api/usuarios'],
+    credencialesDemo: {
+      admin: 'username=admin, password=admin123',
+      cajero: 'username=cajero, password=cajero123',
     },
   });
 });
 
 // -----------------------------------------------------------
-// 404 para rutas no reconocidas
+// RUTAS PÚBLICAS (no requieren token)
+// -----------------------------------------------------------
+app.use('/api', authRouter); // /api/login (público), /api/me (protegido internamente)
+
+// -----------------------------------------------------------
+// RUTAS PROTEGIDAS
+// authJwt verifica el token antes de pasar a cada router. Dentro de cada
+// router, los DELETE críticos exigen además requireRole('ADMIN').
+// -----------------------------------------------------------
+app.use('/api/usuarios', usuariosRouter); // ya protege ADMIN internamente
+app.use('/api/categorias', authJwt, categoriasRouter);
+app.use('/api/clientes', authJwt, clientesRouter);
+app.use('/api/proveedores', authJwt, proveedoresRouter);
+app.use('/api/productos', authJwt, productosRouter);
+app.use('/api/ventas', authJwt, ventasRouter);
+app.use('/api/compras', authJwt, comprasRouter);
+app.use('/api/descuentos', descuentosRouter); // protege authJwt internamente
+app.use('/api/faltantes', faltantesRouter); // protege authJwt internamente
+
+// -----------------------------------------------------------
+// 404
 // -----------------------------------------------------------
 app.use((req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada.' });
@@ -87,7 +109,6 @@ app.use((req, res) => {
 // -----------------------------------------------------------
 app.use((err, req, res, next) => {
   console.error('[error]', err);
-  // Errores de Sequelize por unicidad/FK los devolvemos como 400 más legibles
   if (err.name === 'SequelizeUniqueConstraintError') {
     return res.status(400).json({ error: 'Ya existe un registro con esos datos.' });
   }
