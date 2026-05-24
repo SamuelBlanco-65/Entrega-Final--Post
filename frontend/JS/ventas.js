@@ -123,6 +123,21 @@ function quitarDelCarrito(idProducto) {
     actualizarVistaCarrito();
 }
 
+// Helper: total con el descuento seleccionado en el modal de cobro (si hay).
+function calcularTotalConDescuentoActual() {
+    var total = calcularTotal();
+    var selDesc = document.getElementById("select-descuento-cobro");
+    if (!selDesc || !selDesc.value) return total;
+    var desc = null;
+    for (var i = 0; i < listaDescuentos.length; i++) {
+        if (listaDescuentos[i].id == selDesc.value) { desc = listaDescuentos[i]; break; }
+    }
+    if (!desc) return total;
+    var monto = desc.tipo === "porcentaje" ? Math.round((total * desc.valor) / 100) : desc.valor;
+    if (monto > total) monto = total;
+    return total - monto;
+}
+
 function calcularTotal() {
     var total = 0;
     for (var i = 0; i < ventaActual.items.length; i++) {
@@ -410,7 +425,59 @@ function abrirModalCobro() {
 
     document.querySelector('input[name="metodo"][value="efectivo"]').checked = true;
     cambiarMetodoPago();
+
+    // Poblar el selector de descuentos activos (Fase 5).
+    var selDesc = document.getElementById("select-descuento-cobro");
+    if (selDesc) {
+        selDesc.innerHTML = '<option value="">Sin descuento</option>';
+        for (var d = 0; d < listaDescuentos.length; d++) {
+            var desc = listaDescuentos[d];
+            var etiqueta = desc.nombre + " (" +
+                (desc.tipo === "porcentaje" ? desc.valor + "%" : formatearPrecio(desc.valor)) + ")";
+            selDesc.innerHTML += '<option value="' + desc.id + '">' + etiqueta + '</option>';
+        }
+        selDesc.value = "";
+        document.getElementById("info-descuento-cobro").classList.add("oculto");
+    }
+
     document.getElementById("modal-cobro").classList.remove("oculto");
+}
+
+// Muestra el efecto del descuento seleccionado sobre el total (solo visual;
+// el backend recalcula de forma autoritativa al cobrar).
+function actualizarTotalConDescuento() {
+    var selDesc = document.getElementById("select-descuento-cobro");
+    var info = document.getElementById("info-descuento-cobro");
+    var total = calcularTotal();
+    var totalLabel = document.getElementById("total-en-modal");
+
+    if (!selDesc || !selDesc.value) {
+        totalLabel.textContent = formatearPrecio(total);
+        info.classList.add("oculto");
+        return;
+    }
+
+    // Buscar el descuento elegido.
+    var desc = null;
+    for (var i = 0; i < listaDescuentos.length; i++) {
+        if (listaDescuentos[i].id == selDesc.value) { desc = listaDescuentos[i]; break; }
+    }
+    if (!desc) { totalLabel.textContent = formatearPrecio(total); info.classList.add("oculto"); return; }
+
+    var montoDescuento = desc.tipo === "porcentaje"
+        ? Math.round((total * desc.valor) / 100)
+        : desc.valor;
+    if (montoDescuento > total) montoDescuento = total; // no negativo
+
+    var totalConDesc = total - montoDescuento;
+    totalLabel.textContent = formatearPrecio(totalConDesc);
+    info.textContent = "Descuento aplicado: −" + formatearPrecio(montoDescuento);
+    info.classList.remove("oculto");
+
+    // Si el método es efectivo, recalcular el cambio con el nuevo total.
+    if (document.querySelector('input[name="metodo"]:checked').value === "efectivo") {
+        calcularCambio();
+    }
 }
 
 function cerrarModalCobro() {
@@ -435,7 +502,7 @@ function cambiarMetodoPago() {
 }
 
 function calcularCambio() {
-    var total = calcularTotal();
+    var total = calcularTotalConDescuentoActual();
     var campo = document.getElementById("valor-recibido");
     var valorEscrito = campo.value;
 
@@ -692,15 +759,50 @@ function cargarHistorial() {
         var totalArticulos = 0;
         for (var j = 0; j < venta.items.length; j++) totalArticulos += venta.items[j].cantidad;
         var claseBadge = "badge-pago badge-" + metodo;
+
+        // Badges de estado (Hito 3): anulada, corregida, reembolsada.
+        var badgesEstado = "";
+        if (venta.estado === "anulada") {
+            badgesEstado += '<span class="badge-estado badge-anulada">Anulada</span>';
+        }
+        if (venta.fueCorregida) {
+            badgesEstado += '<span class="badge-estado badge-corregida">Corregida</span>';
+        }
+        if (venta.resumenReembolso && venta.resumenReembolso.tieneReembolsos) {
+            var txtReemb = venta.resumenReembolso.esTotal ? "Reembolsada" : "Reemb. parcial";
+            badgesEstado += '<span class="badge-estado badge-reembolsada">' + txtReemb + '</span>';
+        }
+
+        // Botones de acción. Solo ADMIN ve corregir/reembolsar/anular; cualquiera
+        // puede ver factura y correcciones. (El backend igual valida el rol.)
+        var acciones = '<button class="btn-tabla" onclick="verFactura(\'' + venta.id + '\', \'vista-historial\')">Factura</button>';
+
+        var esAnulada = venta.estado === "anulada";
+        var tieneReemb = venta.resumenReembolso && venta.resumenReembolso.tieneReembolsos;
+
+        if (esAdmin() && !esAnulada) {
+            // Corregir: solo si no tiene reembolsos (exclusión mutua del backend).
+            if (!tieneReemb) {
+                acciones += ' <button class="btn-tabla" onclick="abrirCorreccion(' + venta.id + ')">Corregir</button>';
+            }
+            // Reembolsar.
+            acciones += ' <button class="btn-tabla" onclick="abrirReembolso(' + venta.id + ')">Reembolsar</button>';
+            // Anular.
+            acciones += ' <button class="btn-tabla peligro" onclick="confirmarAnularVenta(' + venta.id + ')">Anular</button>';
+        }
+        if (venta.fueCorregida) {
+            acciones += ' <button class="btn-tabla" onclick="verCorrecciones(' + venta.id + ')">Historial</button>';
+        }
+
         html +=
             '<tr>' +
-                '<td class="texto-mono">' + venta.id + '</td>' +
+                '<td class="texto-mono">' + venta.id + ' ' + badgesEstado + '</td>' +
                 '<td>' + formatearFecha(venta.cerradoEn) + '</td>' +
                 '<td>' + totalArticulos + ' items</td>' +
                 '<td class="texto-precio">' + formatearPrecio(venta.total) + '</td>' +
                 '<td><span class="' + claseBadge + '">' + metodo + '</span></td>' +
                 '<td>' + (venta.cliente || "—") + '</td>' +
-                '<td><button class="btn-tabla" onclick="verFactura(\'' + venta.id + '\', \'vista-historial\')">Ver factura →</button></td>' +
+                '<td>' + acciones + '</td>' +
             '</tr>';
     }
     filas.innerHTML = html;

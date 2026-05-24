@@ -582,3 +582,68 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
     cursor: pointer;
 }
 .btn-logout:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+/* =============================================
+   HITO 3 — Correcciones, reembolsos, reportes (Fase 5)
+   ============================================= */
+
+/* Badges de estado en el historial */
+.badge-estado {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.badge-anulada { background: #ffeaea; color: var(--color-rojo); }
+.badge-corregida { background: #fff3e0; color: var(--color-naranja); }
+.badge-reembolsada { background: #ede7f6; color: #6b3fa0; }
+
+/* Fila de dos campos lado a lado */
+.campos-fila { display: flex; gap: 16px; }
+.campos-fila > div { min-width: 0; }
+
+/* Total en la vista de corrección */
+.total-correccion {
+    margin-top: 14px;
+    text-align: right;
+    font-size: 18px;
+    color: var(--color-cafe-oscuro);
+}
+.total-correccion strong { color: var(--color-naranja); font-size: 22px; margin-left: 8px; }
+
+/* Items del historial de correcciones */
+.correccion-item {
+    border: 1px solid var(--color-borde);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    background: var(--color-fondo);
+}
+.correccion-cabecera { font-weight: 600; font-size: 13px; color: var(--color-cafe-oscuro); margin-bottom: 6px; }
+.correccion-motivo { font-size: 13px; color: var(--color-cafe-medio); margin-bottom: 8px; font-style: italic; }
+.correccion-comparativa { font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.correccion-comparativa > div { color: var(--color-cafe-medio); }
+
+/* Tarjetas de reporte */
+.reporte-tarjetas { display: flex; gap: 16px; flex-wrap: wrap; }
+.reporte-tarjeta {
+    flex: 1;
+    min-width: 160px;
+    background: var(--color-blanco);
+    border: 1px solid var(--color-borde);
+    border-radius: 10px;
+    padding: 18px 20px;
+}
+.reporte-tarjeta-titulo {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--color-cafe-claro);
+    margin-bottom: 8px;
+}
+.reporte-tarjeta-valor { font-size: 26px; font-weight: 700; color: var(--color-naranja); }

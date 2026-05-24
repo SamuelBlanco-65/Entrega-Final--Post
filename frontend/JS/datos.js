@@ -15,6 +15,7 @@ var listaVentas = [];
 var listaClientes = [];
 var listaProveedores = [];
 var listaCategorias = [];
+var listaDescuentos = [];
 
 // La venta que está abierta en este momento
 var ventaActual = null;

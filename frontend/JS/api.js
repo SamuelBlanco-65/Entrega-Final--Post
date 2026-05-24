@@ -228,8 +228,25 @@ async function cargarTodosLosDatos() {
     // Ventas y compras al final (no bloquean el catálogo principal).
     await Promise.all([
         cargarVentasDesdeAPI(),
-        cargarComprasDesdeAPI()
+        cargarComprasDesdeAPI(),
+        cargarDescuentosDesdeAPI()
     ]);
+}
+
+// ---- DESCUENTOS (Hito 2, usados en el cobro - Fase 5) ----
+async function cargarDescuentosDesdeAPI() {
+    try {
+        var datos = await apiGet("/descuentos");
+        // Solo descuentos activos sirven para aplicar a una venta.
+        listaDescuentos = datos
+            .filter(function (d) { return d.activo; })
+            .map(function (d) {
+                return { id: d.id, nombre: d.nombre, tipo: d.tipo, valor: Number(d.valor), activo: d.activo };
+            });
+    } catch (error) {
+        // Si falla, dejamos la lista vacía (la venta simplemente no ofrecerá descuento).
+        listaDescuentos = [];
+    }
 }
 
 // ---- CATEGORÍAS ----

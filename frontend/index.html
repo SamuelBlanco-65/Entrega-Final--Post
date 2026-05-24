@@ -62,6 +62,7 @@
     <button class="boton-nav" onclick="mostrarVista('vista-clientes'); cargarTablaClientes()">👥 Clientes</button>
     <button class="boton-nav" onclick="mostrarVista('vista-proveedores'); cargarTablaProveedores()">🏭 Proveedores</button>
     <button class="boton-nav" onclick="mostrarVista('vista-categorias'); cargarTablaCategorias()">🏷 Categorías</button>
+    <button class="boton-nav" onclick="abrirReportes()" data-vista="vista-reportes">📊 Reportes</button>
 </div>
 
 <!-- CONTENIDO PRINCIPAL -->
@@ -313,6 +314,61 @@
         </table>
     </div>
 
+    <!-- VISTA: CORRECCIÓN DE VENTA (Hito 3) -->
+    <div id="vista-correccion" class="vista">
+        <div class="encabezado-vista">
+            <h1>Corregir Venta #<span id="correccion-venta-id"></span></h1>
+            <button class="btn-secundario" onclick="cancelarCorreccion()">Cancelar</button>
+        </div>
+        <div class="campos-fila">
+            <div style="flex:1">
+                <label class="etiqueta-campo">Método de pago</label>
+                <select id="correccion-metodo" class="campo-input">
+                    <option value="efectivo">Efectivo</option>
+                    <option value="nequi">Nequi</option>
+                    <option value="debe">Debe</option>
+                </select>
+            </div>
+            <div style="flex:1">
+                <label class="etiqueta-campo">Cliente</label>
+                <select id="correccion-cliente" class="campo-input"><option value="">Sin cliente</option></select>
+            </div>
+        </div>
+        <table style="margin-top:16px">
+            <thead><tr><th>Producto</th><th>Precio</th><th>Cantidad</th><th>Subtotal</th><th></th></tr></thead>
+            <tbody id="filas-correccion"></tbody>
+        </table>
+        <div style="margin-top:12px">
+            <select id="correccion-agregar-producto" class="campo-input" style="max-width:340px" onchange="agregarProductoACorreccion()">
+                <option value="">+ Agregar producto…</option>
+            </select>
+        </div>
+        <div class="total-correccion">Total: <strong id="correccion-total">$ 0</strong></div>
+        <label class="etiqueta-campo" style="margin-top:12px">Motivo de la corrección (opcional)</label>
+        <input type="text" id="correccion-motivo" class="campo-input" placeholder="Ej. El cliente cambió de producto">
+        <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn-secundario" onclick="cancelarCorreccion()">Cancelar</button>
+            <button class="btn-principal" onclick="guardarCorreccion()">Guardar corrección</button>
+        </div>
+    </div>
+
+    <!-- VISTA: REPORTES (Hito 3) -->
+    <div id="vista-reportes" class="vista">
+        <div class="encabezado-vista"><h1>Reportes</h1></div>
+        <div class="campos-fila" style="align-items:flex-end">
+            <div><label class="etiqueta-campo">Desde</label>
+                <input type="date" id="reporte-desde" class="campo-input"></div>
+            <div><label class="etiqueta-campo">Hasta</label>
+                <input type="date" id="reporte-hasta" class="campo-input"></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-principal" onclick="reporteVentas()">Ventas totales</button>
+            <button class="btn-principal" onclick="reporteProductos()">Productos más vendidos</button>
+            <button class="btn-principal" onclick="reporteCompras()">Compras</button>
+        </div>
+        <div id="resultado-reportes" style="margin-top:22px"></div>
+    </div>
+
 </div><!-- fin contenido-principal -->
 
 
@@ -372,6 +428,12 @@
             <select id="select-cliente-cobro" class="campo-input" style="margin-bottom:14px">
                 <option value="">Sin cliente</option>
             </select>
+
+            <label class="etiqueta-campo">Descuento (opcional)</label>
+            <select id="select-descuento-cobro" class="campo-input" style="margin-bottom:14px" onchange="actualizarTotalConDescuento()">
+                <option value="">Sin descuento</option>
+            </select>
+            <div id="info-descuento-cobro" class="oculto" style="margin:-6px 0 14px;font-size:13px;color:#2d7a4f"></div>
 
             <p class="etiqueta-campo">Método de pago:</p>
             <div id="opciones-pago">
@@ -535,6 +597,60 @@
 
 <div id="notificacion"></div>
 
+<!-- MODAL: REEMBOLSO (Hito 3) -->
+<div id="modal-reembolso" class="modal-fondo oculto">
+    <div class="modal-caja" style="max-width:680px">
+        <div class="modal-encabezado">
+            <h2>Reembolso · Venta #<span id="reembolso-venta-id"></span></h2>
+            <button class="boton-cerrar-modal" onclick="cerrarModalReembolso()">✕</button>
+        </div>
+        <div class="modal-cuerpo">
+            <table>
+                <thead><tr>
+                    <th>Producto</th><th>Vendido</th><th>Ya reemb.</th><th>Disponible</th><th>A reembolsar</th><th>Inventario</th>
+                </tr></thead>
+                <tbody id="filas-reembolso"></tbody>
+            </table>
+            <div class="campos-fila" style="margin-top:14px">
+                <div style="flex:1">
+                    <label class="etiqueta-campo">Fuente del reembolso</label>
+                    <select id="reembolso-fuente" class="campo-input">
+                        <option value="caja">Caja</option>
+                        <option value="nequi">Nequi</option>
+                        <option value="ajuste_deuda">Ajuste de deuda</option>
+                    </select>
+                </div>
+                <div style="flex:2">
+                    <label class="etiqueta-campo">Observaciones (opcional)</label>
+                    <input type="text" id="reembolso-observaciones" class="campo-input" placeholder="Motivo del reembolso">
+                </div>
+            </div>
+            <div id="total-cobro-destacado" style="margin-top:16px">
+                <span>Monto a reembolsar:</span>
+                <strong id="reembolso-monto-total">$ 0</strong>
+            </div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarModalReembolso()">Cancelar</button>
+            <button class="btn-principal" onclick="confirmarReembolso()">Registrar reembolso</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: HISTORIAL DE CORRECCIONES (Hito 3) -->
+<div id="modal-correcciones" class="modal-fondo oculto">
+    <div class="modal-caja" style="max-width:640px">
+        <div class="modal-encabezado">
+            <h2>Historial de correcciones</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarModalCorrecciones()">✕</button>
+        </div>
+        <div class="modal-cuerpo" id="contenido-correcciones"></div>
+        <div class="modal-pie">
+            <button class="btn-principal" onclick="cerrarModalCorrecciones()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 </div><!-- /#app-completa -->
 
 <script src="JS/datos.js"></script>
@@ -544,6 +660,7 @@
 <script src="JS/ventas.js"></script>
 <script src="JS/compras.js"></script>
 <script src="JS/entidades.js"></script>
+<script src="JS/hito3.js"></script>
 <script src="JS/app.js"></script>
 
 </body>

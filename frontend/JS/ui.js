@@ -6,26 +6,23 @@ function mostrarVista(idVista) {
     for (var i = 0; i < todasLasVistas.length; i++) {
         todasLasVistas[i].classList.remove("activa");
     }
-    document.getElementById(idVista).classList.add("activa");
+    var vistaObjetivo = document.getElementById(idVista);
+    if (vistaObjetivo) vistaObjetivo.classList.add("activa");
 
     var todosLosBotones = document.querySelectorAll(".boton-nav");
     for (var j = 0; j < todosLosBotones.length; j++) {
         todosLosBotones[j].classList.remove("activo");
     }
 
-    // Resalto el boton del menu que corresponde a la vista
-    var mapa = {
-        "vista-nueva-venta": 0,
-        "vista-historial": 1,
-        "vista-productos": 2,
-        "vista-compras": 3,
-        "vista-clientes": 4,
-        "vista-proveedores": 5,
-        "vista-categorias": 6
-    };
-
-    if (mapa[idVista] !== undefined) {
-        todosLosBotones[mapa[idVista]].classList.add("activo");
+    // Resaltamos el botón del menú cuyo onclick referencia esta vista.
+    // Es robusto frente a cambios de orden o nuevos botones (no usa índices).
+    for (var k = 0; k < todosLosBotones.length; k++) {
+        var accion = todosLosBotones[k].getAttribute("onclick") || "";
+        var dataVista = todosLosBotones[k].getAttribute("data-vista") || "";
+        if (accion.indexOf("'" + idVista + "'") !== -1 || dataVista === idVista) {
+            todosLosBotones[k].classList.add("activo");
+            break;
+        }
     }
 }
 
