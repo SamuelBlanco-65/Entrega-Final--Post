@@ -166,11 +166,15 @@ function actualizarVistaCarrito() {
         var item = items[i];
         var subtotal = item.precio * item.cantidad;
 
-        // Busco la imagen del producto en el catalogo
+        // Busco la imagen Y el código del producto en el catálogo. Antes aquí
+        // se mostraba item.idProducto (un número del backend) que parecía un
+        // stock; mostramos el código real del producto, que es lo útil.
         var imagenProducto = "";
+        var codigoProducto = "";
         for (var p = 0; p < listaProductos.length; p++) {
             if (listaProductos[p].id == item.idProducto) {
                 imagenProducto = listaProductos[p].imagen || "";
+                codigoProducto = listaProductos[p].codigo || "";
                 break;
             }
         }
@@ -185,7 +189,7 @@ function actualizarVistaCarrito() {
                         imgCarritoHtml +
                         '<div>' +
                             '<div style="font-weight:500">' + item.nombre + '</div>' +
-                            '<div class="texto-mono" style="color:#9a9087;margin-top:2px">' + item.idProducto + '</div>' +
+                            '<div class="texto-mono" style="color:#9a9087;margin-top:2px">' + codigoProducto + '</div>' +
                         '</div>' +
                     '</div>' +
                 '</td>' +
@@ -263,15 +267,33 @@ async function guardarEdicionProductoEnVenta() {
 
     mostrarLoader("Actualizando producto...");
     try {
+        // Buscamos el producto en memoria para enviar su estado completo al
+        // backend con los campos editados (nombre y precio).
+        var prod = null;
         for (var i = 0; i < listaProductos.length; i++) {
-            if (listaProductos[i].id == id) {
-                listaProductos[i].nombre = nombre;
-                listaProductos[i].precio = precio;
-                await guardarProductoEnAPI(listaProductos[i]);
-                break;
-            }
+            if (listaProductos[i].id == id) { prod = listaProductos[i]; break; }
         }
-        // Actualizo tambien el nombre y precio en el carrito actual
+        if (!prod) {
+            mostrarNotificacion("No se encontró el producto", "error");
+            ocultarLoader();
+            return;
+        }
+
+        var cuerpo = {
+            nombre: nombre,
+            categoriaId: prod.categoriaId,
+            precio: precio,
+            costo: prod.costo,
+            controlInventario: prod.controlInventario,
+            stock: prod.controlInventario ? prod.stock : null,
+            imagen: prod.imagen || null
+        };
+        await apiPut("/productos/" + id, cuerpo);
+
+        // Recargamos productos para reflejar el cambio real del backend.
+        await cargarProductosDesdeAPI();
+
+        // Actualizo nombre y precio en el carrito actual (la venta en curso).
         for (var j = 0; j < ventaActual.items.length; j++) {
             if (ventaActual.items[j].idProducto == id) {
                 ventaActual.items[j].nombre = nombre;
@@ -301,7 +323,14 @@ function buscarProducto() {
     var resultados = [];
     for (var i = 0; i < listaProductos.length; i++) {
         var prod = listaProductos[i];
-        if (prod.nombre.toLowerCase().includes(texto) || prod.id.toLowerCase().includes(texto)) {
+        // Buscamos por nombre y por código. Usamos String(...) para que
+        // funcione tanto si el valor es texto como número (el id del backend
+        // es numérico, así que prod.id.toLowerCase() reventaría). El código
+        // (codigoInterno) es lo que el usuario suele escanear/escribir.
+        var nombre = String(prod.nombre || "").toLowerCase();
+        var codigo = String(prod.codigo || "").toLowerCase();
+        var idTexto = String(prod.id || "").toLowerCase();
+        if (nombre.includes(texto) || codigo.includes(texto) || idTexto.includes(texto)) {
             resultados.push(prod);
         }
     }
@@ -325,12 +354,20 @@ function mostrarResultadosBusqueda(resultados, textoBuscado) {
             ? '<img src="' + prod.imagen + '" class="img-resultado" onerror="this.style.display=\'none\'">'
             : '<div class="img-resultado-placeholder">📦</div>';
 
+        // Texto secundario: código · categoría · stock disponible. Mostrar el
+        // stock aquí (en la búsqueda) sí es útil para el cajero. Antes mostraba
+        // prod.id (número) que confundía.
+        var infoStock = prod.controlInventario
+            ? (prod.stock != null ? prod.stock + " und." : "Sin stock")
+            : "Sin seguimiento";
+        var codigoTxt = prod.codigo ? prod.codigo + " · " : "";
+
         html +=
             '<div class="item-resultado" onclick="seleccionarProductoDeBusqueda(' + indexReal + ')">' +
                 imgHtml +
                 '<div class="info-resultado">' +
                     '<div class="nombre-resultado">' + prod.nombre + '</div>' +
-                    '<div class="codigo-resultado">' + prod.id + ' · ' + prod.categoria + '</div>' +
+                    '<div class="codigo-resultado">' + codigoTxt + prod.categoria + ' · ' + infoStock + '</div>' +
                 '</div>' +
                 '<div class="precio-resultado">' + formatearPrecio(prod.precio) + '</div>' +
             '</div>';
@@ -431,7 +468,8 @@ async function confirmarCobro() {
     var metodo = document.querySelector('input[name="metodo"]:checked').value;
     var clienteId = document.getElementById("select-cliente-cobro").value;
 
-    // Validacion de stock
+    // Validacion previa de stock (chequeo rápido en cliente; el backend
+    // vuelve a validar de forma autoritativa dentro de su transacción).
     for (var k = 0; k < ventaActual.items.length; k++) {
         var item = ventaActual.items[k];
         for (var m = 0; m < listaProductos.length; m++) {
@@ -446,73 +484,72 @@ async function confirmarCobro() {
         }
     }
 
-    if (metodo == "efectivo") {
+    // Validación de efectivo: debe cubrir el total (el backend recalcula y
+    // valida también, pero damos feedback inmediato aquí).
+    if (metodo === "efectivo") {
         var valorRecibidoTexto = document.getElementById("valor-recibido").value;
         var errorRecibidoCobro = validarPrecioCOP(valorRecibidoTexto, "El valor recibido");
         if (errorRecibidoCobro) {
             mostrarNotificacion(errorRecibidoCobro, "error");
             return;
         }
-        var recibido = parseInt(valorRecibidoTexto);
-        if (recibido < total) {
-            mostrarNotificacion("El valor recibido (" + formatearPrecio(recibido) + ") es menor al total a cobrar (" + formatearPrecio(total) + ")", "error");
+        if (parseInt(valorRecibidoTexto) < total) {
+            mostrarNotificacion("El valor recibido es menor al total a cobrar (" + formatearPrecio(total) + ")", "error");
             return;
         }
-        ventaActual.pago = { metodo: "efectivo", valorRecibido: recibido, cambio: recibido - total };
-    } else if (metodo == "debe") {
-        // Si se selecciono un cliente del sistema lo uso, si no exijo el campo de texto
-        var clienteSeleccionado = document.getElementById("select-cliente-cobro").value;
-        var nombreCliente = "";
-        if (clienteSeleccionado != "") {
-            // Busco el nombre del cliente en la lista
-            for (var cx = 0; cx < listaClientes.length; cx++) {
-                if (listaClientes[cx].id == clienteSeleccionado) {
-                    nombreCliente = listaClientes[cx].nombre;
-                    break;
-                }
-            }
-        } else {
-            nombreCliente = document.getElementById("input-cliente-debe").value.trim();
-        }
-        if (nombreCliente == "") {
-            mostrarNotificacion("Selecciona o escribe el nombre del cliente para 'Debe'", "error");
-            return;
-        }
-        ventaActual.pago = { metodo: "debe", cliente: nombreCliente };
-        ventaActual.cliente = nombreCliente;
-    } else if (metodo == "nequi") {
-        ventaActual.pago = { metodo: "nequi" };
     }
 
-    ventaActual.total = total;
-    ventaActual.cerradoEn = new Date().toISOString();
-    ventaActual.estado = "cerrada";
-    ventaActual.clienteId = clienteId;
+    // Construimos el cuerpo que espera el backend. NO calculamos total ni
+    // descontamos stock aquí: el backend lo hace en una transacción y nos
+    // devuelve la venta ya calculada. Solo enviamos la "intención".
+    var cuerpo = {
+        metodoPago: metodo,
+        items: ventaActual.items.map(function (it) {
+            return { productoId: it.idProducto, cantidad: it.cantidad };
+        })
+    };
+
+    // Cliente: el backend usa clienteId numérico. Para "debe" es obligatorio.
+    if (metodo === "debe") {
+        // En "debe" exigimos un cliente REGISTRADO (el backend no acepta
+        // nombres de texto libre, solo clienteId). Tomamos el del selector.
+        var clienteDebe = document.getElementById("select-cliente-debe").value;
+        if (!clienteDebe) {
+            mostrarNotificacion("Para 'Debe' debes seleccionar un cliente registrado.", "error");
+            return;
+        }
+        cuerpo.clienteId = parseInt(clienteDebe);
+    } else if (clienteId) {
+        // Para efectivo/nequi el cliente es opcional.
+        cuerpo.clienteId = parseInt(clienteId);
+    }
+
+    // Efectivo recibido (el backend valida que cubra el total y calcula cambio).
+    if (metodo === "efectivo") {
+        cuerpo.efectivoRecibido = parseInt(document.getElementById("valor-recibido").value);
+    }
+
+    // Descuento opcional (si el modal tiene selector de descuento).
+    var selDesc = document.getElementById("select-descuento-cobro");
+    if (selDesc && selDesc.value) {
+        cuerpo.descuentoId = parseInt(selDesc.value);
+    }
 
     mostrarLoader("Registrando venta...");
     try {
-        await guardarVentaEnAPI(ventaActual);
+        // El backend crea la venta, descuenta stock y devuelve la venta completa.
+        var resp = await apiPost("/ventas", cuerpo);
+        var ventaCreada = resp.venta ? resp.venta : resp; // tolerante al formato
 
-        listaVentas.unshift(ventaActual);
+        // Recargamos productos (su stock cambió en el backend) y ventas, para
+        // que las pantallas reflejen el estado real. NO tocamos stock a mano.
+        await cargarProductosDesdeAPI();
+        await cargarVentasDesdeAPI();
 
-        // Descuento stock localmente
-        for (var i = 0; i < ventaActual.items.length; i++) {
-            var it = ventaActual.items[i];
-            for (var j = 0; j < listaProductos.length; j++) {
-                if (listaProductos[j].id == it.idProducto) {
-                    if (listaProductos[j].controlInventario && listaProductos[j].stock != null) {
-                        listaProductos[j].stock -= it.cantidad;
-                        if (listaProductos[j].stock < 0) listaProductos[j].stock = 0;
-                    }
-                    break;
-                }
-            }
-        }
-
-        idUltimaVentaCerrada = ventaActual.id;
+        idUltimaVentaCerrada = ventaCreada.id;
         borrarVentaAbiertaLocal();
         cerrarModalCobro();
-        mostrarVistaConfirmacion(ventaActual.id);
+        mostrarVistaConfirmacion(ventaCreada.id);
     } catch (error) {
         mostrarNotificacion("Error al registrar la venta: " + error.message, "error");
     } finally {

@@ -143,44 +143,42 @@ async function registrarCompra() {
     var proveedorId = document.getElementById("select-proveedor-compra").value;
     var metodoPago = document.querySelector('input[name="metodo-compra"]:checked').value;
 
-    var compra = {
-        id: generarId("C"),
-        fecha: new Date().toISOString(),
-        proveedorId: proveedorId,
+    if (!proveedorId) {
+        mostrarNotificacion("Selecciona un proveedor", "error");
+        return;
+    }
+
+    // Cuerpo para el backend. Él calcula el total, suma el stock de cada
+    // producto y devuelve la compra. Enviamos items en formato backend:
+    // { productoId, cantidad, costoUnitario }.
+    var cuerpo = {
+        proveedorId: parseInt(proveedorId),
         metodoPago: metodoPago,
-        total: calcularTotalCompra(),
-        items: itemsCompraActual
+        items: itemsCompraActual.map(function (it) {
+            return {
+                productoId: parseInt(it.idProducto),
+                cantidad: it.cantidad,
+                costoUnitario: it.costo
+            };
+        })
     };
 
     mostrarLoader("Registrando compra...");
     try {
-        await guardarCompraEnAPI(compra);
+        var resp = await apiPost("/compras", cuerpo);
+        var compraCreada = resp.compra ? resp.compra : resp;
 
-        // Guardo la compra localmente para el historial
-        listaCompras.unshift({
-            id: compra.id,
-            fecha: compra.fecha,
-            proveedorId: compra.proveedorId,
-            metodoPago: compra.metodoPago,
-            total: compra.total,
-            items: compra.items.slice()
+        // Recargamos productos (su stock subió en el backend) y compras.
+        await cargarProductosDesdeAPI();
+        await cargarComprasDesdeAPI();
+
+        // Confirmación visible. Le pasamos un objeto con los datos que la
+        // función de confirmación espera.
+        mostrarConfirmacionCompra({
+            id: compraCreada.id,
+            total: cuerpo.items.reduce(function (acc, it) { return acc + it.costoUnitario * it.cantidad; }, 0),
+            items: itemsCompraActual.slice()
         });
-
-        // Actualizo el stock de cada producto comprado
-        for (var i = 0; i < itemsCompraActual.length; i++) {
-            var item = itemsCompraActual[i];
-            for (var j = 0; j < listaProductos.length; j++) {
-                if (listaProductos[j].id == item.idProducto) {
-                    if (listaProductos[j].controlInventario && listaProductos[j].stock != null) {
-                        listaProductos[j].stock += item.cantidad;
-                    }
-                    break;
-                }
-            }
-        }
-
-        // Muestro confirmacion clara
-        mostrarConfirmacionCompra(compra);
 
         itemsCompraActual = [];
         renderizarItemsCompra();
