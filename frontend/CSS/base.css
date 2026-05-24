@@ -1,0 +1,137 @@
+/* =============================================
+   BASE.CSS - MVP 2
+   ============================================= */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --color-cafe-oscuro: #1a1612;
+    --color-cafe-medio: #4a443d;
+    --color-cafe-claro: #9a9087;
+    --color-fondo: #faf8f4;
+    --color-fondo-calido: #f4f0e8;
+    --color-blanco: #ffffff;
+    --color-naranja: #c9622a;
+    --color-naranja-hover: #a84e1f;
+    --color-verde: #2d7a4f;
+    --color-rojo: #c0392b;
+    --color-borde: #e0d8cc;
+    --color-borde-fuerte: #c8bfb0;
+}
+
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    background-color: var(--color-fondo);
+    color: var(--color-cafe-oscuro);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.btn-principal {
+    background-color: var(--color-naranja);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-principal:hover { background-color: var(--color-naranja-hover); }
+.btn-principal:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-secundario {
+    background-color: transparent;
+    color: var(--color-cafe-medio);
+    border: 1px solid var(--color-borde-fuerte);
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.btn-secundario:hover { background-color: var(--color-fondo-calido); }
+
+.btn-peligro {
+    background-color: var(--color-rojo);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-peligro:hover { background-color: #a93225; }
+
+.btn-tabla {
+    background: none;
+    border: 1px solid var(--color-borde);
+    border-radius: 4px;
+    padding: 4px 9px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--color-cafe-medio);
+}
+.btn-tabla:hover { background-color: var(--color-fondo-calido); }
+.btn-tabla.peligro:hover { background-color: #ffeaea; border-color: var(--color-rojo); color: var(--color-rojo); }
+
+.oculto { display: none !important; }
+.texto-mono { font-family: monospace; font-size: 12px; }
+.texto-precio { font-family: monospace; font-weight: 600; }
+
+/* NOTIFICACION */
+#notificacion {
+    position: fixed;
+    bottom: 22px; right: 22px;
+    background-color: var(--color-cafe-oscuro);
+    color: white;
+    padding: 11px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    z-index: 200;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+}
+#notificacion.visible { opacity: 1; transform: translateY(0); }
+#notificacion.exito { background-color: var(--color-verde); }
+#notificacion.error { background-color: var(--color-rojo); }
+
+/* LOADER GLOBAL */
+#loader-global {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(26,22,18,0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    gap: 16px;
+}
+.spinner-loader {
+    width: 44px; height: 44px;
+    border: 4px solid rgba(255,255,255,0.2);
+    border-top-color: var(--color-naranja);
+    border-radius: 50%;
+    animation: girar 0.8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+#loader-global-texto { color: white; font-size: 14px; font-weight: 500; }
+
+/* IMPRESION */
+@media print {
+    #sidebar, .encabezado-vista .botones-encabezado, .sin-impresion { display: none !important; }
+    body { background: white; }
+    #contenido-principal { padding: 0; }
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-borde-fuerte); border-radius: 3px; }

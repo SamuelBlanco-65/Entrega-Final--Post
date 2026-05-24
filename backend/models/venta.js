@@ -8,6 +8,10 @@ module.exports = (sequelize, DataTypes) => {
       Venta.belongsTo(models.Descuento, { foreignKey: 'descuentoId' });
       // alias 'items' para que las consultas usen `include: 'items'` legible
       Venta.hasMany(models.VentaItem, { foreignKey: 'ventaId', as: 'items' });
+      // Hito 3: historial de correcciones (RN-06) y reembolsos (RF-60+).
+      // Inversas para poder hacer include: 'correcciones' / 'reembolsos'.
+      Venta.hasMany(models.CorreccionVenta, { foreignKey: 'ventaId', as: 'correcciones' });
+      Venta.hasMany(models.Reembolso, { foreignKey: 'ventaId', as: 'reembolsos' });
     }
   }
 

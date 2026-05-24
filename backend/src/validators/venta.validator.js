@@ -41,3 +41,27 @@ exports.createRules = [
 exports.anularRules = [
   body('observaciones').optional({ nullable: true }).isString().isLength({ max: 500 }),
 ];
+
+/**
+ * Hito 3 - Corrección de venta cerrada (RF-50). El payload es el ESTADO
+ * DESEADO completo de la venta. Reglas análogas a createRules más el motivo.
+ */
+exports.corregirRules = [
+  body('clienteId').optional({ nullable: true }).isInt({ min: 1 }),
+  body('metodoPago').isIn(['efectivo', 'nequi', 'debe'])
+    .withMessage('El método de pago debe ser "efectivo", "nequi" o "debe".'),
+  body('efectivoRecibido')
+    .if(body('metodoPago').equals('efectivo'))
+    .isInt({ min: 0 })
+    .withMessage('Si pagan en efectivo, debes indicar el efectivo recibido.'),
+  body('items').isArray({ min: 1 })
+    .withMessage('Una venta corregida debe tener al menos un ítem.'),
+  body('items.*.productoId').isInt({ min: 1 })
+    .withMessage('Cada ítem debe tener un productoId válido.'),
+  body('items.*.cantidad').isInt({ min: 1 })
+    .withMessage('La cantidad de cada ítem debe ser un entero mayor a cero.'),
+  body('descuentoId').optional({ nullable: true }).isInt({ min: 1 })
+    .withMessage('descuentoId debe ser un entero positivo si se especifica.'),
+  body('motivo').optional({ nullable: true }).isString().isLength({ max: 500 }),
+  body('observaciones').optional({ nullable: true }).isString(),
+];

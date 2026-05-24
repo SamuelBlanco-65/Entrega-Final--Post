@@ -16,6 +16,8 @@ const ventasRouter = require('./routes/ventas');
 const comprasRouter = require('./routes/compras');
 const descuentosRouter = require('./routes/descuentos');
 const faltantesRouter = require('./routes/faltantes');
+const reembolsosRouter = require('./routes/reembolsos');
+const reportesRouter = require('./routes/reportes');
 
 // Middlewares
 const requestLogger = require('./middlewares/requestLogger');
@@ -55,8 +57,8 @@ app.use(requestLogger);
 app.get('/api', (req, res) => {
   res.json({
     nombre: 'POS Papel y Luna - Backend',
-    version: '2.0.0',
-    hito: 'Hito 2 - Autenticación JWT, roles, descuentos y faltantes',
+    version: '3.0.0',
+    hito: 'Hito 3 - Corrección de ventas, reembolsos y reportes',
     publicas: ['POST /api/login', 'GET /api (esta doc)'],
     autenticadas: [
       'GET /api/me',
@@ -65,6 +67,10 @@ app.get('/api', (req, res) => {
       'GET|POST /api/proveedores, GET|PUT /api/proveedores/:id (DELETE solo ADMIN)',
       'GET|POST /api/productos, GET|PUT /api/productos/:id (DELETE solo ADMIN)',
       'GET|POST /api/ventas, GET /api/ventas/:id (DELETE/anular solo ADMIN)',
+      'GET /api/ventas/:id/reabrir, PUT /api/ventas/:id/corregir (solo ADMIN), GET /api/ventas/:id/correcciones',
+      'POST /api/ventas/:ventaId/reembolsos (solo ADMIN), GET /api/ventas/:ventaId/reembolsos',
+      'GET /api/reembolsos, GET /api/reembolsos/:id',
+      'GET /api/reportes/ventas, /api/reportes/productos-mas-vendidos, /api/reportes/compras (?desde=&hasta=)',
       'GET|POST /api/compras, GET /api/compras/:id',
       'GET /api/descuentos, GET /api/descuentos/:id (POST|PUT|DELETE solo ADMIN)',
       'GET|POST /api/faltantes, PUT|PATCH|DELETE /api/faltantes/:id, GET /api/faltantes/reporte/frecuentes',
@@ -96,6 +102,8 @@ app.use('/api/ventas', authJwt, ventasRouter);
 app.use('/api/compras', authJwt, comprasRouter);
 app.use('/api/descuentos', descuentosRouter); // protege authJwt internamente
 app.use('/api/faltantes', faltantesRouter); // protege authJwt internamente
+app.use('/api/reembolsos', reembolsosRouter); // protege authJwt internamente (consulta)
+app.use('/api/reportes', reportesRouter); // protege authJwt internamente
 
 // -----------------------------------------------------------
 // 404

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Papel y Luna MVP 2</title>
+    <link rel="stylesheet" href="CSS/base.css">
+    <link rel="stylesheet" href="CSS/modales.css">
+    <link rel="stylesheet" href="CSS/styles.css">
+</head>
+<body>
+
+<!-- LOADER GLOBAL -->
+<div id="loader-global" class="oculto">
+    <div class="spinner-loader"></div>
+    <p id="loader-global-texto">Cargando...</p>
+</div>
+
+<!-- ===================== PANTALLA DE LOGIN ===================== -->
+<div id="pantalla-login">
+    <div class="login-caja">
+        <div class="login-logo">
+            <h2><span>Papel</span> y Luna</h2>
+            <p>Sistema POS · Iniciar sesión</p>
+        </div>
+        <div class="login-campo">
+            <label>Usuario</label>
+            <input type="text" id="login-username" placeholder="Ej. admin" autocomplete="username">
+        </div>
+        <div class="login-campo">
+            <label>Contraseña</label>
+            <input type="password" id="login-password" placeholder="Tu contraseña" autocomplete="current-password">
+        </div>
+        <div id="login-error" class="login-error oculto"></div>
+        <button id="btn-login" class="btn-principal login-boton" onclick="iniciarSesion()">Ingresar</button>
+    </div>
+</div>
+
+<!-- ===================== APLICACIÓN COMPLETA ===================== -->
+<!-- Todo el POS vive aquí dentro; se oculta mientras se muestra el login. -->
+<div id="app-completa" class="oculto">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+    <div id="logo-sidebar">
+        <h2>Papel y Luna</h2>
+        <p>Sistema POS</p>
+    </div>
+
+    <div id="info-usuario"></div>
+
+    <p class="seccion-nav">Ventas</p>
+    <button class="boton-nav activo" onclick="mostrarVista('vista-nueva-venta')">🛒 Nueva Venta</button>
+    <button class="boton-nav" onclick="mostrarVista('vista-historial'); cargarHistorial()">📋 Historial</button>
+
+    <p class="seccion-nav">Inventario</p>
+    <button class="boton-nav" onclick="mostrarVista('vista-productos'); cargarTablaProductos()">📦 Productos</button>
+    <button class="boton-nav" onclick="abrirVistaCompras()">🛍 Compras</button>
+    <button class="boton-nav" onclick="abrirHistorialCompras()">📋 Historial Compras</button>
+
+    <p class="seccion-nav">Entidades</p>
+    <button class="boton-nav" onclick="mostrarVista('vista-clientes'); cargarTablaClientes()">👥 Clientes</button>
+    <button class="boton-nav" onclick="mostrarVista('vista-proveedores'); cargarTablaProveedores()">🏭 Proveedores</button>
+    <button class="boton-nav" onclick="mostrarVista('vista-categorias'); cargarTablaCategorias()">🏷 Categorías</button>
+</div>
+
+<!-- CONTENIDO PRINCIPAL -->
+<div id="contenido-principal">
+
+    <!-- VISTA: NUEVA VENTA -->
+    <div id="vista-nueva-venta" class="vista activa">
+        <div class="encabezado-vista">
+            <div>
+                <h1>Nueva Venta</h1>
+                <span id="id-venta-actual" class="badge-id">—</span>
+            </div>
+            <div class="botones-encabezado">
+                <button class="btn-secundario oculto" id="btn-retomar-venta" onclick="retomarVentaAbierta()">↩ Retomar venta guardada</button>
+                <button class="btn-secundario" onclick="guardarVentaComoAbierta()">💾 Guardar venta</button>
+                <button class="btn-secundario" onclick="descartarVenta()">Descartar</button>
+                <button class="btn-principal" id="boton-cobrar" disabled onclick="abrirModalCobro()">Cobrar</button>
+            </div>
+        </div>
+
+        <div id="caja-busqueda">
+            <input type="text" id="input-busqueda" placeholder="Buscar producto por nombre o código..." onkeyup="buscarProducto()">
+            <div id="resultados-busqueda" class="oculto"></div>
+        </div>
+
+        <div id="contenedor-venta">
+            <div id="panel-carrito">
+                <div id="carrito-vacio">
+                    <p>☁️</p>
+                    <p>No hay productos en esta venta.</p>
+                    <p class="texto-ayuda">Busca un producto arriba para comenzar.</p>
+                </div>
+                <table id="tabla-carrito" class="oculto">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unit.</th>
+                            <th>Subtotal</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="filas-carrito"></tbody>
+                </table>
+            </div>
+            <div id="panel-totales">
+                <div class="tarjeta-totales">
+                    <div class="fila-total"><span>Subtotal:</span><span id="mostrar-subtotal">$ 0</span></div>
+                    <hr>
+                    <div class="fila-total fila-total-grande"><span>Total:</span><span id="mostrar-total">$ 0</span></div>
+                </div>
+                <p id="contador-items">0 artículos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: CONFIRMACION -->
+    <div id="vista-confirmacion" class="vista">
+        <div id="caja-confirmacion">
+            <div id="icono-confirmacion">✓</div>
+            <h2>¡Venta registrada!</h2>
+            <p id="texto-confirmacion"></p>
+            <div class="botones-confirmacion">
+                <button class="btn-secundario" onclick="verFacturaDesdeConfirmacion()">Ver Factura</button>
+                <button class="btn-principal" onclick="empezarNuevaVenta()">Nueva Venta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: FACTURA -->
+    <div id="vista-factura" class="vista">
+        <div class="encabezado-vista">
+            <h1>Factura</h1>
+            <div class="botones-encabezado">
+                <button class="btn-secundario" onclick="volverDesdeFactura()">← Volver</button>
+                <button class="btn-principal sin-impresion" onclick="window.print()">Imprimir</button>
+            </div>
+        </div>
+        <div id="contenido-factura"></div>
+    </div>
+
+    <!-- VISTA: HISTORIAL -->
+    <div id="vista-historial" class="vista">
+        <div class="encabezado-vista"><h1>Historial de Ventas</h1></div>
+        <div id="historial-vacio" class="estado-vacio oculto"><p>📋</p><p>No hay ventas registradas.</p></div>
+        <table id="tabla-historial" class="oculto">
+            <thead>
+                <tr>
+                    <th>ID Venta</th><th>Fecha</th><th>Artículos</th>
+                    <th>Total</th><th>Método</th><th>Cliente</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="filas-historial"></tbody>
+        </table>
+    </div>
+
+    <!-- VISTA: PRODUCTOS -->
+    <div id="vista-productos" class="vista">
+        <div class="encabezado-vista">
+            <h1>Productos</h1>
+            <button class="btn-principal" onclick="abrirFormularioProducto('nuevo')">+ Nuevo Producto</button>
+        </div>
+        <div id="productos-vacio" class="estado-vacio oculto"><p>📦</p><p>No hay productos en el catálogo.</p></div>
+        <table id="tabla-productos" class="oculto">
+            <thead>
+                <tr><th>Imagen</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="filas-productos"></tbody>
+        </table>
+    </div>
+
+    <!-- VISTA: COMPRAS -->
+    <div id="vista-compras" class="vista">
+        <div class="encabezado-vista"><h1>Registrar Compra</h1></div>
+
+        <div class="formulario-compra">
+            <div class="fila-proveedor">
+                <label class="etiqueta-campo">Proveedor</label>
+                <select id="select-proveedor-compra" class="campo-input">
+                    <option value="">Sin proveedor</option>
+                </select>
+            </div>
+            <div class="fila-compra">
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Producto</label>
+                    <select id="select-producto-compra" class="campo-input">
+                        <option value="">Selecciona un producto</option>
+                    </select>
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Cantidad</label>
+                    <input type="number" id="cantidad-compra" class="campo-input" placeholder="0" min="1">
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Costo unitario</label>
+                    <input type="number" id="costo-compra" class="campo-input" placeholder="0" min="0">
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">&nbsp;</label>
+                    <button class="btn-principal" onclick="agregarItemCompra()" style="width:100%">+ Agregar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="compra-vacia">📦 Agrega productos a la compra usando el formulario de arriba.</div>
+        <table id="tabla-items-compra" class="oculto">
+            <thead>
+                <tr><th>Producto</th><th>Cantidad</th><th>Costo Unit.</th><th>Subtotal</th><th>Quitar</th></tr>
+            </thead>
+            <tbody id="filas-items-compra"></tbody>
+        </table>
+        <p id="total-compra">Total: $ 0</p>
+        <!-- Metodo de pago de la compra -->
+        <div class="formulario-compra" style="margin-top:16px">
+            <p class="etiqueta-campo" style="margin-bottom:10px">Método de pago de la compra:</p>
+            <div id="opciones-pago" style="margin-bottom:0">
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo-compra" value="efectivo" checked>
+                    <span>&#128181; Efectivo</span>
+                </label>
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo-compra" value="nequi">
+                    <span>&#128241; Nequi</span>
+                </label>
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo-compra" value="consignacion">
+                    <span>&#127981; En Consignación</span>
+                </label>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:10px">
+            <button class="btn-principal" onclick="registrarCompra()">&#10003; Registrar Compra</button>
+            <button class="btn-secundario" onclick="abrirHistorialCompras()">&#128203; Ver historial</button>
+        </div>
+    </div>
+
+    <!-- VISTA: HISTORIAL DE COMPRAS -->
+    <div id="vista-historial-compras" class="vista">
+        <div class="encabezado-vista">
+            <h1>Historial de Compras</h1>
+            <button class="btn-secundario" onclick="abrirVistaCompras()">+ Nueva Compra</button>
+        </div>
+        <div class="barra-busqueda-entidad" style="display:flex;gap:10px;align-items:center">
+            <select id="filtro-proveedor-compras" class="campo-input" style="max-width:260px" onchange="cargarHistorialCompras()">
+                <option value="">Todos los proveedores</option>
+            </select>
+        </div>
+        <div id="historial-compras-vacio" class="estado-vacio oculto"><p>&#128722;</p><p>No hay compras registradas.</p></div>
+        <table id="tabla-historial-compras" class="oculto">
+            <thead>
+                <tr>
+                    <th>ID</th><th>Fecha</th><th>Proveedor</th>
+                    <th>Items</th><th>Total</th><th>Método de Pago</th>
+                </tr>
+            </thead>
+            <tbody id="filas-historial-compras"></tbody>
+        </table>
+    </div>
+
+    <!-- VISTA: CLIENTES -->
+    <div id="vista-clientes" class="vista">
+        <div class="encabezado-vista">
+            <h1>Clientes</h1>
+            <button class="btn-principal" onclick="abrirFormularioEntidad('cliente', 'nuevo')">+ Nuevo Cliente</button>
+        </div>
+        <div class="barra-busqueda-entidad">
+            <input type="text" id="buscador-clientes" class="input-buscador-entidad" placeholder="Buscar cliente por nombre, teléfono o correo..." onkeyup="buscarEnClientes()">
+        </div>
+        <div id="clientes-vacio" class="estado-vacio oculto"><p>👥</p><p>No hay clientes registrados.</p></div>
+        <p id="clientes-sin-resultados" class="sin-resultados-entidad oculto">No se encontraron clientes con ese criterio.</p>
+        <table id="tabla-clientes" class="oculto">
+            <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Acciones</th></tr></thead>
+            <tbody id="filas-clientes"></tbody>
+        </table>
+    </div>
+
+    <!-- VISTA: PROVEEDORES -->
+    <div id="vista-proveedores" class="vista">
+        <div class="encabezado-vista">
+            <h1>Proveedores</h1>
+            <button class="btn-principal" onclick="abrirFormularioEntidad('proveedor', 'nuevo')">+ Nuevo Proveedor</button>
+        </div>
+        <div class="barra-busqueda-entidad">
+            <input type="text" id="buscador-proveedores" class="input-buscador-entidad" placeholder="Buscar proveedor por nombre, teléfono o correo..." onkeyup="buscarEnProveedores()">
+        </div>
+        <div id="proveedores-vacio" class="estado-vacio oculto"><p>🏭</p><p>No hay proveedores registrados.</p></div>
+        <p id="proveedores-sin-resultados" class="sin-resultados-entidad oculto">No se encontraron proveedores con ese criterio.</p>
+        <table id="tabla-proveedores" class="oculto">
+            <thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Acciones</th></tr></thead>
+            <tbody id="filas-proveedores"></tbody>
+        </table>
+    </div>
+
+    <!-- VISTA: CATEGORIAS -->
+    <div id="vista-categorias" class="vista">
+        <div class="encabezado-vista">
+            <h1>Categorías</h1>
+            <button class="btn-principal" onclick="abrirFormularioEntidad('categoria', 'nuevo')">+ Nueva Categoría</button>
+        </div>
+        <div class="barra-busqueda-entidad">
+            <input type="text" id="buscador-categorias" class="input-buscador-entidad" placeholder="Buscar categoría por nombre..." onkeyup="buscarEnCategorias()">
+        </div>
+        <div id="categorias-vacio" class="estado-vacio oculto"><p>🏷</p><p>No hay categorías registradas.</p></div>
+        <p id="categorias-sin-resultados" class="sin-resultados-entidad oculto">No se encontraron categorías con ese criterio.</p>
+        <table id="tabla-categorias" class="oculto">
+            <thead><tr><th>Nombre</th><th>Acciones</th></tr></thead>
+            <tbody id="filas-categorias"></tbody>
+        </table>
+    </div>
+
+</div><!-- fin contenido-principal -->
+
+
+<!-- MODAL: CONFIRMACION DE COMPRA -->
+<div id="modal-confirmacion-compra" class="modal-fondo oculto">
+    <div class="modal-caja">
+        <div class="modal-encabezado">
+            <h2>&#10003; Compra registrada</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarConfirmacionCompra()">&#10005;</button>
+        </div>
+        <div class="modal-cuerpo">
+            <div class="confirmacion-compra-icono">&#128722;</div>
+            <div class="confirmacion-compra-detalles">
+                <div class="fila-confirmacion-compra">
+                    <span>ID:</span>
+                    <strong id="confirmacion-compra-id"></strong>
+                </div>
+                <div class="fila-confirmacion-compra">
+                    <span>Proveedor:</span>
+                    <strong id="confirmacion-compra-proveedor"></strong>
+                </div>
+                <div class="fila-confirmacion-compra">
+                    <span>Productos:</span>
+                    <strong id="confirmacion-compra-items"></strong>
+                </div>
+                <div class="fila-confirmacion-compra">
+                    <span>Método de pago:</span>
+                    <strong id="confirmacion-compra-metodo"></strong>
+                </div>
+                <div class="fila-confirmacion-compra destacada">
+                    <span>Total:</span>
+                    <strong id="confirmacion-compra-total"></strong>
+                </div>
+            </div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarConfirmacionCompra(); abrirHistorialCompras()">Ver historial</button>
+            <button class="btn-principal" onclick="cerrarConfirmacionCompra()">Nueva compra</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: COBRO -->
+<div id="modal-cobro" class="modal-fondo oculto">
+    <div class="modal-caja">
+        <div class="modal-encabezado">
+            <h2>Cobrar Venta</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarModalCobro()">✕</button>
+        </div>
+        <div class="modal-cuerpo">
+            <div id="total-cobro-destacado">
+                <span>Total a cobrar:</span>
+                <strong id="total-en-modal">$ 0</strong>
+            </div>
+
+            <label class="etiqueta-campo">Cliente (opcional)</label>
+            <select id="select-cliente-cobro" class="campo-input" style="margin-bottom:14px">
+                <option value="">Sin cliente</option>
+            </select>
+
+            <p class="etiqueta-campo">Método de pago:</p>
+            <div id="opciones-pago">
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo" value="efectivo" checked onchange="cambiarMetodoPago()">
+                    <span>💵 Efectivo</span>
+                </label>
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo" value="nequi" onchange="cambiarMetodoPago()">
+                    <span>📱 Nequi</span>
+                </label>
+                <label class="opcion-pago">
+                    <input type="radio" name="metodo" value="debe" onchange="cambiarMetodoPago()">
+                    <span>📋 Debe</span>
+                </label>
+            </div>
+
+            <div id="seccion-efectivo">
+                <label class="etiqueta-campo">Valor recibido:</label>
+                <input type="number" id="valor-recibido" class="campo-input" placeholder="$ 0" min="0" onkeyup="calcularCambio()" oninput="calcularCambio()">
+                <div id="caja-cambio">
+                    <span>Cambio:</span>
+                    <strong id="mostrar-cambio">$ 0</strong>
+                </div>
+            </div>
+            <div id="seccion-debe" class="oculto">
+                <label class="etiqueta-campo">Cliente registrado (recomendado):</label>
+                <select id="select-cliente-debe" class="campo-input" style="margin-bottom:8px">
+                    <option value="">Selecciona un cliente registrado</option>
+                </select>
+                <label class="etiqueta-campo">O escribe el nombre:</label>
+                <input type="text" id="input-cliente-debe" class="campo-input" placeholder="Nombre del cliente si no está registrado">
+            </div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarModalCobro()">Cancelar</button>
+            <button class="btn-principal" onclick="confirmarCobro()">Confirmar Cobro</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: PRODUCTO -->
+<div id="modal-producto" class="modal-fondo oculto">
+    <div class="modal-caja modal-grande">
+        <div class="modal-encabezado">
+            <h2 id="titulo-form-producto">Nuevo Producto</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarFormularioProducto()">✕</button>
+        </div>
+        <div class="modal-cuerpo">
+            <div class="grilla-formulario">
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Nombre *</label>
+                    <input type="text" id="campo-nombre" class="campo-input" placeholder="Ej: Cuaderno cuadriculado">
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Categoría *</label>
+                    <select id="campo-categoria" class="campo-input">
+                        <option value="">Selecciona una categoría</option>
+                    </select>
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Precio de venta *</label>
+                    <input type="number" id="campo-precio" class="campo-input" placeholder="0" min="0">
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">Costo de compra *</label>
+                    <input type="number" id="campo-costo" class="campo-input" placeholder="0" min="0">
+                </div>
+                <div class="grupo-campo">
+                    <label class="etiqueta-campo">¿Controlar inventario?</label>
+                    <select id="campo-inventario" class="campo-input" onchange="toggleCampoStock()">
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <div class="grupo-campo" id="grupo-stock">
+                    <label class="etiqueta-campo">Stock disponible</label>
+                    <input type="number" id="campo-stock" class="campo-input" placeholder="0" min="0">
+                </div>
+                <div class="grupo-campo" style="grid-column: 1 / -1">
+                    <label class="etiqueta-campo">URL de imagen (opcional)</label>
+                    <input type="text" id="campo-imagen" class="campo-input" placeholder="https://ejemplo.com/imagen.jpg" oninput="previsualizarImagen()">
+                    <div id="preview-imagen" style="margin-top:8px"></div>
+                </div>
+            </div>
+            <div id="errores-formulario" class="oculto"></div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarFormularioProducto()">Cancelar</button>
+            <button class="btn-principal" onclick="guardarProducto()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR PRODUCTO EN VENTA -->
+<div id="modal-editar-en-venta" class="modal-fondo oculto">
+    <div class="modal-caja modal-chico">
+        <div class="modal-encabezado">
+            <h2>Editar producto</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarFormularioProductoEnVenta()">✕</button>
+        </div>
+        <div class="modal-cuerpo">
+            <input type="hidden" id="edit-venta-id-oculto">
+            <div class="grupo-campo">
+                <label class="etiqueta-campo">Nombre</label>
+                <input type="text" id="edit-venta-nombre" class="campo-input">
+            </div>
+            <div class="grupo-campo">
+                <label class="etiqueta-campo">Precio de venta</label>
+                <input type="number" id="edit-venta-precio" class="campo-input" min="0">
+            </div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarFormularioProductoEnVenta()">Cancelar</button>
+            <button class="btn-principal" onclick="guardarEdicionProductoEnVenta()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ENTIDADES (clientes, proveedores, categorias) -->
+<div id="modal-entidad" class="modal-fondo oculto">
+    <div class="modal-caja">
+        <div class="modal-encabezado">
+            <h2 id="titulo-form-entidad">Nueva Entidad</h2>
+            <button class="boton-cerrar-modal" onclick="cerrarFormularioEntidad()">✕</button>
+        </div>
+        <div class="modal-cuerpo">
+            <div class="grupo-campo">
+                <label class="etiqueta-campo">Nombre *</label>
+                <input type="text" id="campo-entidad-nombre" class="campo-input" placeholder="Nombre">
+            </div>
+            <div class="grupo-campo" id="grupo-telefono">
+                <label class="etiqueta-campo">Teléfono</label>
+                <input type="text" id="campo-entidad-telefono" class="campo-input" placeholder="Teléfono">
+            </div>
+            <div class="grupo-campo" id="grupo-correo">
+                <label class="etiqueta-campo">Correo</label>
+                <input type="email" id="campo-entidad-correo" class="campo-input" placeholder="correo@ejemplo.com">
+            </div>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarFormularioEntidad()">Cancelar</button>
+            <button class="btn-principal" onclick="guardarEntidad()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ELIMINAR -->
+<div id="modal-eliminar" class="modal-fondo oculto">
+    <div class="modal-caja modal-chico">
+        <div class="modal-encabezado"><h2>¿Eliminar?</h2></div>
+        <div class="modal-cuerpo">
+            <p id="mensaje-eliminar">¿Estás seguro? Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="modal-pie">
+            <button class="btn-secundario" onclick="cerrarModalEliminar()">Cancelar</button>
+            <button class="btn-peligro" onclick="ejecutarEliminacion()">Sí, eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="notificacion"></div>
+
+</div><!-- /#app-completa -->
+
+<script src="JS/datos.js"></script>
+<script src="JS/api.js"></script>
+<script src="JS/ui.js"></script>
+<script src="JS/productos.js"></script>
+<script src="JS/ventas.js"></script>
+<script src="JS/compras.js"></script>
+<script src="JS/entidades.js"></script>
+<script src="JS/app.js"></script>
+
+</body>
+</html>
