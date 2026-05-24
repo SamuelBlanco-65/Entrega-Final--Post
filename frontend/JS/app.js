@@ -22,24 +22,31 @@ window.onload = function () {
     }
 };
 
+// Bandera para evitar que la carga inicial se dispare más de una vez a la vez.
+var appCargando = false;
+var appYaIniciada = false;
+
 // Carga todos los datos del backend y prepara la interfaz.
 // Se llama tras un login exitoso, o al recargar con sesión activa.
-// (En la Fase 2 conectaremos las funciones de carga reales; por ahora
-//  esta función ya deja la app lista y la vista inicial visible.)
 async function iniciarAplicacion() {
+    // Guarda anti-reentrada: si ya se está cargando, ignoramos llamadas extra.
+    // Esto evita bucles de peticiones si algo dispara el arranque dos veces.
+    if (appCargando) return;
+    appCargando = true;
+
     mostrarLoader("Conectando con el servidor...");
 
     try {
         // Mostramos el nombre del usuario en el sidebar.
         actualizarInfoUsuario();
 
-        // Carga de catálogos desde el backend (se implementa en Fase 2).
-        // Dejamos el await preparado para que la Fase 2 solo rellene el cuerpo.
+        // Carga de catálogos desde el backend.
         await cargarTodosLosDatos();
     } catch (error) {
         mostrarNotificacion("Error al cargar datos: " + error.message, "error");
     } finally {
         ocultarLoader();
+        appCargando = false;
     }
 
     // Inicio una venta nueva vacía.
@@ -47,8 +54,11 @@ async function iniciarAplicacion() {
     actualizarBotonVentaAbierta();
     mostrarVista("vista-nueva-venta");
 
-    // Cierro modales al hacer clic en el fondo oscuro.
-    enlazarCierreModales();
+    // Cierro modales al hacer clic en el fondo oscuro (solo la primera vez).
+    if (!appYaIniciada) {
+        enlazarCierreModales();
+        appYaIniciada = true;
+    }
 }
 
 // Muestra el nombre y rol del usuario logueado en el sidebar, y enlaza logout.

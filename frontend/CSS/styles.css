@@ -479,6 +479,18 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
     gap: 8px;
 }
 
+/* #app-completa envuelve toda la app (sidebar + contenido). Debe ser el
+   contenedor flex que antes era el <body>, ya que al envolver la app en este
+   div, el sidebar y el contenido pasaron a ser sus hijos directos. Sin esto,
+   #contenido-principal pierde su `flex:1` y el layout se descuadra en pantalla
+   grande. */
+#app-completa {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
 /* =============================================
    LOGIN E INFO DE USUARIO (Hito 4 - Fase 1)
    Usa las variables de base.css para integrarse

@@ -118,7 +118,13 @@ function recuperarSesion() {
 
 // Cierra la sesión: borra token/usuario y muestra el login.
 // Si fueSesionExpirada = true, avisamos al usuario del motivo.
+// Es idempotente: si ya no hay token, no vuelve a ejecutar (evita que varias
+// peticiones en paralelo que reciben 401 disparen el cierre muchas veces).
+var cerrandoSesion = false;
 function cerrarSesion(fueSesionExpirada) {
+    if (cerrandoSesion && !obtenerToken()) return;
+    cerrandoSesion = true;
+
     localStorage.removeItem(CLAVE_TOKEN);
     localStorage.removeItem(CLAVE_USUARIO);
     usuarioActual = null;
@@ -130,6 +136,7 @@ function cerrarSesion(fueSesionExpirada) {
             err.classList.remove("oculto");
         }
     }
+    cerrandoSesion = false;
 }
 
 // ¿El usuario actual es ADMIN? (se usará en la Fase 6 para roles en la UI).
@@ -199,13 +206,215 @@ function ocultarVistaLogin() {
 }
 
 
+
+
 // =====================================================================
-//  STUB TEMPORAL (FASE 1) — se reemplaza en la Fase 2
+//  CARGA DE DATOS DESDE EL BACKEND (FASE 2)
+//  Cada función pide datos al backend REST y los TRADUCE al formato que
+//  las pantallas existentes ya esperan (capa de traducción). Así no hay
+//  que reescribir los renders de productos.js, ventas.js, etc.
 // =====================================================================
-// La Fase 2 implementará la carga real de productos, ventas, clientes, etc.
-// Por ahora esta función vacía permite que la app arranque tras el login
-// sin error, para poder probar el login de forma aislada.
+
+// Orquesta la carga inicial. ORDEN IMPORTANTE: categorías primero, porque
+// la traducción de productos necesita convertir categoriaId -> nombre.
 async function cargarTodosLosDatos() {
-    // Fase 2: aquí irán las llamadas reales (apiGet("/productos"), etc.)
-    return;
+    // Categorías y entidades primero (productos dependen de categorías).
+    await cargarCategoriasDesdeAPI();
+    await Promise.all([
+        cargarProductosDesdeAPI(),
+        cargarClientesDesdeAPI(),
+        cargarProveedoresDesdeAPI()
+    ]);
+    // Ventas y compras al final (no bloquean el catálogo principal).
+    await Promise.all([
+        cargarVentasDesdeAPI(),
+        cargarComprasDesdeAPI()
+    ]);
+}
+
+// ---- CATEGORÍAS ----
+// El frontend usa { id, nombre }. El backend devuelve lo mismo, pero id es
+// número; lo dejamos como número porque el resto del código compara con ==.
+async function cargarCategoriasDesdeAPI() {
+    try {
+        var datos = await apiGet("/categorias");
+        listaCategorias = datos.map(function (c) {
+            return { id: c.id, nombre: c.nombre };
+        });
+    } catch (error) {
+        mostrarNotificacion("Error al cargar categorías: " + error.message, "error");
+        listaCategorias = [];
+    }
+}
+
+// Helper: dado un categoriaId del backend, devuelve el NOMBRE de la categoría
+// (lo que las pantallas muestran). Si no la encuentra, cadena vacía.
+function nombreCategoriaPorId(categoriaId) {
+    for (var i = 0; i < listaCategorias.length; i++) {
+        if (listaCategorias[i].id == categoriaId) return listaCategorias[i].nombre;
+    }
+    return "";
+}
+
+// Helper inverso: dado un NOMBRE de categoría, devuelve su id (para guardar).
+// Se usará en la Fase 3 al crear/editar productos.
+function idCategoriaPorNombre(nombre) {
+    for (var i = 0; i < listaCategorias.length; i++) {
+        if (listaCategorias[i].nombre == nombre) return listaCategorias[i].id;
+    }
+    return null;
+}
+
+// ---- PRODUCTOS ----
+// Backend: { id, nombre, categoriaId, precio, costo, stock, controlInventario,
+//            codigoInterno, codigoBarras, imagen, unidadVenta }
+// Frontend espera: { id, nombre, categoria(texto), precio, costo, stock,
+//                    controlInventario, codigo, imagen }
+async function cargarProductosDesdeAPI() {
+    try {
+        var datos = await apiGet("/productos");
+        listaProductos = datos.map(function (p) {
+            return {
+                id: p.id,
+                nombre: p.nombre,
+                categoria: nombreCategoriaPorId(p.categoriaId), // traducción id->nombre
+                categoriaId: p.categoriaId,                     // guardamos el id por si hace falta
+                precio: Number(p.precio),
+                costo: Number(p.costo),
+                stock: (p.stock === null || p.stock === undefined) ? null : Number(p.stock),
+                controlInventario: p.controlInventario === true,
+                codigo: p.codigoInterno || String(p.id),
+                imagen: p.imagen || ""
+            };
+        });
+    } catch (error) {
+        mostrarNotificacion("Error al cargar productos: " + error.message, "error");
+        listaProductos = [];
+    }
+}
+
+// ---- CLIENTES ----
+async function cargarClientesDesdeAPI() {
+    try {
+        var datos = await apiGet("/clientes");
+        listaClientes = datos.map(function (c) {
+            return {
+                id: c.id,
+                nombre: c.nombre,
+                telefono: c.telefono || "",
+                correo: c.correo || ""
+            };
+        });
+    } catch (error) {
+        mostrarNotificacion("Error al cargar clientes: " + error.message, "error");
+        listaClientes = [];
+    }
+}
+
+// ---- PROVEEDORES ----
+async function cargarProveedoresDesdeAPI() {
+    try {
+        var datos = await apiGet("/proveedores");
+        listaProveedores = datos.map(function (p) {
+            return {
+                id: p.id,
+                nombre: p.nombre,
+                telefono: p.telefono || "",
+                correo: p.correo || ""
+            };
+        });
+    } catch (error) {
+        mostrarNotificacion("Error al cargar proveedores: " + error.message, "error");
+        listaProveedores = [];
+    }
+}
+
+// ---- VENTAS ----
+// Backend: lista con { id, estado, metodoPago, clienteId, total, createdAt,
+//   modificadaPor, descuentoMonto, items:[{ productoId, nombreSnapshot,
+//   precioUnitario, cantidad, subtotal }] }  (el list puede no traer items;
+//   por eso normalizamos con cuidado).
+// Frontend espera: { id, cerradoEn, total, cliente(texto), pago:{metodo,...},
+//   items:[{ idProducto, nombre, precio, cantidad }], estado }
+async function cargarVentasDesdeAPI() {
+    try {
+        var datos = await apiGet("/ventas");
+        listaVentas = datos.map(traducirVenta);
+    } catch (error) {
+        mostrarNotificacion("Error al cargar ventas: " + error.message, "error");
+        listaVentas = [];
+    }
+}
+
+// Traduce UNA venta del backend al formato del frontend. Se reutiliza en
+// fases posteriores (corrección, reembolsos) al recargar una venta concreta.
+function traducirVenta(v) {
+    var items = (v.items || []).map(function (it) {
+        return {
+            idProducto: it.productoId,
+            nombre: it.nombreSnapshot,
+            precio: Number(it.precioUnitario),
+            cantidad: Number(it.cantidad),
+            ventaItemId: it.id   // id real del VentaItem, necesario para reembolsos (Fase 5)
+        };
+    });
+
+    // Nombre de cliente: el backend da clienteId; buscamos su nombre si lo tenemos.
+    var nombreCliente = "";
+    if (v.clienteId) {
+        for (var i = 0; i < listaClientes.length; i++) {
+            if (listaClientes[i].id == v.clienteId) { nombreCliente = listaClientes[i].nombre; break; }
+        }
+    }
+
+    return {
+        id: v.id,
+        cerradoEn: v.createdAt,
+        total: Number(v.total),
+        estado: v.estado,
+        clienteId: v.clienteId,
+        cliente: nombreCliente,
+        pago: {
+            metodo: v.metodoPago,
+            valorRecibido: v.efectivoRecibido,
+            cambio: v.cambio
+        },
+        descuentoMonto: Number(v.descuentoMonto || 0),
+        modificadaPor: v.modificadaPor || null,
+        fueCorregida: v.fueCorregida === true,          // bandera del Hito 3
+        resumenReembolso: v.resumenReembolso || null,   // resumen del Hito 3
+        items: items
+    };
+}
+
+// ---- COMPRAS ----
+// Backend: { id, proveedorId, metodoPago, total, createdAt,
+//   items:[{ productoId, nombreSnapshot, costoUnitario, cantidad }] }
+// Frontend (compras.js) espera: { id, fecha, proveedorId, metodoPago, total,
+//   items:[{ idProducto, nombre, costo, cantidad }] }
+async function cargarComprasDesdeAPI() {
+    try {
+        var datos = await apiGet("/compras");
+        listaCompras = datos.map(function (c) {
+            var items = (c.items || []).map(function (it) {
+                return {
+                    idProducto: it.productoId,
+                    nombre: it.nombreSnapshot,
+                    costo: Number(it.costoUnitario),
+                    cantidad: Number(it.cantidad)
+                };
+            });
+            return {
+                id: c.id,
+                fecha: c.createdAt,
+                proveedorId: c.proveedorId,
+                metodoPago: c.metodoPago,
+                total: Number(c.total),
+                items: items
+            };
+        });
+    } catch (error) {
+        mostrarNotificacion("Error al cargar compras: " + error.message, "error");
+        listaCompras = [];
+    }
 }
