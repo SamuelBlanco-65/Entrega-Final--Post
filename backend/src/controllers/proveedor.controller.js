@@ -1,5 +1,5 @@
 'use strict';
-const { Proveedor } = require('../../models');
+const { Proveedor, Compra } = require('../../models');
 
 exports.list = async (req, res, next) => {
   try {
@@ -41,6 +41,17 @@ exports.destroy = async (req, res, next) => {
   try {
     const proveedor = await Proveedor.findByPk(req.params.id);
     if (!proveedor) return res.status(404).json({ error: 'Proveedor no encontrado.' });
+
+    // Integridad referencial: no borrar un proveedor con compras registradas,
+    // para preservar el historial de compras (esas compras quedarían sin
+    // proveedor identificable).
+    const comprasAsociadas = await Compra.count({ where: { proveedorId: proveedor.id } });
+    if (comprasAsociadas > 0) {
+      return res.status(409).json({
+        error: `No se puede eliminar el proveedor porque tiene ${comprasAsociadas} compra(s) registrada(s) en el historial.`,
+      });
+    }
+
     await proveedor.destroy();
     res.json({ mensaje: 'Proveedor eliminado.' });
   } catch (err) { next(err); }

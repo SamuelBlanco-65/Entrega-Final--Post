@@ -1,5 +1,5 @@
 'use strict';
-const { Categoria } = require('../../models');
+const { Categoria, Producto } = require('../../models');
 
 exports.list = async (req, res, next) => {
   try {
@@ -40,6 +40,17 @@ exports.destroy = async (req, res, next) => {
   try {
     const categoria = await Categoria.findByPk(req.params.id);
     if (!categoria) return res.status(404).json({ error: 'Categoría no encontrada.' });
+
+    // Integridad referencial: no permitir borrar una categoría que tiene
+    // productos asociados, porque dejaría esos productos con un categoriaId
+    // huérfano (apuntando a algo que ya no existe).
+    const productosAsociados = await Producto.count({ where: { categoriaId: categoria.id } });
+    if (productosAsociados > 0) {
+      return res.status(409).json({
+        error: `No se puede eliminar la categoría porque tiene ${productosAsociados} producto(s) asociado(s). Reasigna o elimina esos productos primero.`,
+      });
+    }
+
     await categoria.destroy();
     res.json({ mensaje: 'Categoría eliminada.' });
   } catch (err) { next(err); }

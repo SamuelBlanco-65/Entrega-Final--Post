@@ -248,12 +248,15 @@ async function cargarCategoriasDesdeAPI() {
 }
 
 // Helper: dado un categoriaId del backend, devuelve el NOMBRE de la categoría
-// (lo que las pantallas muestran). Si no la encuentra, cadena vacía.
+// (lo que las pantallas muestran). Si no la encuentra (p. ej. la categoría fue
+// borrada y quedó un id huérfano), devuelve "Sin categoría" para no mostrar
+// un espacio en blanco.
 function nombreCategoriaPorId(categoriaId) {
+    if (categoriaId == null) return "Sin categoría";
     for (var i = 0; i < listaCategorias.length; i++) {
         if (listaCategorias[i].id == categoriaId) return listaCategorias[i].nombre;
     }
-    return "";
+    return "Sin categoría";
 }
 
 // Helper inverso: dado un NOMBRE de categoría, devuelve su id (para guardar).
