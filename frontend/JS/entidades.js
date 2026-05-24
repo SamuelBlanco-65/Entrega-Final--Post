@@ -179,60 +179,31 @@ async function guardarEntidad() {
 
     mostrarLoader("Guardando...");
     try {
-        if (entidadEditando.id == null) {
-            // CREAR
-            var objeto = { id: generarId(tipo[0].toUpperCase()), nombre: nombre, telefono: telefono, correo: correo };
+        var rutaBase = { cliente: "/clientes", proveedor: "/proveedores", categoria: "/categorias" };
 
-            if (tipo == "cliente") {
-                await guardarClienteEnAPI(objeto);
-                listaClientes.push(objeto);
-            } else if (tipo == "proveedor") {
-                await guardarProveedorEnAPI(objeto);
-                listaProveedores.push(objeto);
-            } else if (tipo == "categoria") {
-                var cat = { id: generarId("CAT"), nombre: nombre };
-                await guardarCategoriaEnAPI(cat);
-                listaCategorias.push(cat);
-            }
+        // Cuerpo según tipo. Categoría solo tiene nombre.
+        var cuerpo;
+        if (tipo == "categoria") {
+            cuerpo = { nombre: nombre };
+        } else {
+            cuerpo = { nombre: nombre, telefono: telefono || null, correo: correo || null };
+        }
+
+        if (entidadEditando.id == null) {
+            // CREAR: el backend asigna el id.
+            await apiPost(rutaBase[tipo], cuerpo);
             mostrarNotificacion("Creado correctamente", "exito");
         } else {
-            // EDITAR — actualizo localmente
-            if (tipo == "cliente") {
-                for (var i = 0; i < listaClientes.length; i++) {
-                    if (listaClientes[i].id == entidadEditando.id) {
-                        listaClientes[i].nombre = nombre;
-                        listaClientes[i].telefono = telefono;
-                        listaClientes[i].correo = correo;
-                        await guardarClienteEnAPI(listaClientes[i]);
-                        break;
-                    }
-                }
-            } else if (tipo == "proveedor") {
-                for (var j = 0; j < listaProveedores.length; j++) {
-                    if (listaProveedores[j].id == entidadEditando.id) {
-                        listaProveedores[j].nombre = nombre;
-                        listaProveedores[j].telefono = telefono;
-                        listaProveedores[j].correo = correo;
-                        await guardarProveedorEnAPI(listaProveedores[j]);
-                        break;
-                    }
-                }
-            } else if (tipo == "categoria") {
-                for (var k = 0; k < listaCategorias.length; k++) {
-                    if (listaCategorias[k].id == entidadEditando.id) {
-                        listaCategorias[k].nombre = nombre;
-                        await guardarCategoriaEnAPI(listaCategorias[k]);
-                        break;
-                    }
-                }
-            }
+            // EDITAR
+            await apiPut(rutaBase[tipo] + "/" + entidadEditando.id, cuerpo);
             mostrarNotificacion("Actualizado correctamente", "exito");
         }
 
         cerrarFormularioEntidad();
-        if (tipo == "cliente") cargarTablaClientes();
-        else if (tipo == "proveedor") cargarTablaProveedores();
-        else if (tipo == "categoria") cargarTablaCategorias();
+        // Recargar desde backend y refrescar la tabla correspondiente.
+        if (tipo == "cliente") { await cargarClientesDesdeAPI(); cargarTablaClientes(); }
+        else if (tipo == "proveedor") { await cargarProveedoresDesdeAPI(); cargarTablaProveedores(); }
+        else if (tipo == "categoria") { await cargarCategoriasDesdeAPI(); cargarTablaCategorias(); }
 
     } catch (error) {
         mostrarNotificacion("Error al guardar: " + error.message, "error");
@@ -256,36 +227,49 @@ function abrirModalEliminarEntidad(tipo, id) {
     document.getElementById("modal-eliminar").classList.remove("oculto");
 }
 
-function ejecutarEliminacion() {
+async function ejecutarEliminacion() {
+    // ELIMINAR ENTIDAD (cliente / proveedor / categoría)
     if (entidadAEliminar != null) {
         var tipo = entidadAEliminar.tipo;
         var id = entidadAEliminar.id;
+        // Ruta REST según el tipo. El backend exige rol ADMIN para DELETE.
+        var rutaPorTipo = { cliente: "/clientes/", proveedor: "/proveedores/", categoria: "/categorias/" };
 
-        if (tipo == "cliente") {
-            listaClientes = listaClientes.filter(function(x) { return x.id != id; });
-            cargarTablaClientes();
-        } else if (tipo == "proveedor") {
-            listaProveedores = listaProveedores.filter(function(x) { return x.id != id; });
-            cargarTablaProveedores();
-        } else if (tipo == "categoria") {
-            listaCategorias = listaCategorias.filter(function(x) { return x.id != id; });
-            cargarTablaCategorias();
+        mostrarLoader("Eliminando...");
+        try {
+            await apiDelete(rutaPorTipo[tipo] + id);
+            // Recargamos la lista correspondiente desde el backend.
+            if (tipo == "cliente") { await cargarClientesDesdeAPI(); cargarTablaClientes(); }
+            else if (tipo == "proveedor") { await cargarProveedoresDesdeAPI(); cargarTablaProveedores(); }
+            else if (tipo == "categoria") { await cargarCategoriasDesdeAPI(); cargarTablaCategorias(); }
+            mostrarNotificacion("Eliminado correctamente", "exito");
+        } catch (error) {
+            // Ej.: 403 si no es ADMIN, o error de FK si tiene registros asociados.
+            mostrarNotificacion("No se pudo eliminar: " + error.message, "error");
+        } finally {
+            ocultarLoader();
+            entidadAEliminar = null;
+            cerrarModalEliminar();
         }
-        entidadAEliminar = null;
-        cerrarModalEliminar();
-        mostrarNotificacion("Eliminado de la vista");
         return;
     }
-    // Si no es entidad, es producto
+
+    // ELIMINAR PRODUCTO
     if (idProductoAEliminar != null) {
-        var filtrados = [];
-        for (var i = 0; i < listaProductos.length; i++) {
-            if (listaProductos[i].id != idProductoAEliminar) filtrados.push(listaProductos[i]);
+        var idProd = idProductoAEliminar;
+        mostrarLoader("Eliminando producto...");
+        try {
+            await apiDelete("/productos/" + idProd);
+            await cargarProductosDesdeAPI();
+            cargarTablaProductos();
+            mostrarNotificacion("Producto eliminado correctamente", "exito");
+        } catch (error) {
+            mostrarNotificacion("No se pudo eliminar: " + error.message, "error");
+        } finally {
+            ocultarLoader();
+            idProductoAEliminar = null;
+            cerrarModalEliminar();
         }
-        listaProductos = filtrados;
-        cerrarModalEliminar();
-        cargarTablaProductos();
-        mostrarNotificacion("Producto eliminado de la vista");
     }
 }
 

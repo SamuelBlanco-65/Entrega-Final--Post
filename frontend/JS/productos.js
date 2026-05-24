@@ -198,41 +198,47 @@ async function guardarProducto() {
     mostrarLoader("Guardando producto...");
 
     try {
+        // Traducimos del formato del formulario al formato que espera el backend.
+        // categoria (nombre) -> categoriaId (número); codigo -> codigoInterno.
+        var categoriaId = idCategoriaPorNombre(categoria);
+        if (categoriaId == null) {
+            ocultarLoader();
+            var ed = document.getElementById("errores-formulario");
+            ed.innerHTML = "• La categoría seleccionada no existe. Créala primero en Categorías.";
+            ed.classList.remove("oculto");
+            return;
+        }
+
+        var cuerpo = {
+            nombre: nombre,
+            categoriaId: categoriaId,
+            precio: precio,
+            costo: costo,
+            controlInventario: controlInventario,
+            stock: controlInventario ? stock : null,
+            imagen: imagen || null
+        };
+
         if (idProductoEditando == null) {
-            var productoNuevo = {
-                id: generarId("P"),
-                nombre: nombre,
-                categoria: categoria,
-                precio: parseInt(precioTexto),
-                costo: parseInt(costoTexto),
-                controlInventario: controlInventario,
-                stock: controlInventario ? stock : null,
-                codigo: generarCodigoProducto(),
-                imagen: imagen
-            };
-            await guardarProductoEnAPI(productoNuevo);
-            listaProductos.push(productoNuevo);
+            // CREAR: el backend asigna el id. No generamos id en el cliente.
+            await apiPost("/productos", cuerpo);
             mostrarNotificacion("Producto creado correctamente", "exito");
         } else {
-            for (var j = 0; j < listaProductos.length; j++) {
-                if (listaProductos[j].id == idProductoEditando) {
-                    listaProductos[j].nombre = nombre;
-                    listaProductos[j].categoria = categoria;
-                    listaProductos[j].precio = precio;
-                    listaProductos[j].costo = costo;
-                    listaProductos[j].controlInventario = controlInventario;
-                    listaProductos[j].stock = controlInventario ? stock : null;
-                    listaProductos[j].imagen = imagen;
-                    await guardarProductoEnAPI(listaProductos[j]);
-                    break;
-                }
-            }
+            // EDITAR
+            await apiPut("/productos/" + idProductoEditando, cuerpo);
             mostrarNotificacion("Producto actualizado correctamente", "exito");
         }
+
         cerrarFormularioProducto();
+        // Recargamos desde el backend para reflejar exactamente lo guardado
+        // (incluido el id real, el código generado en backend, etc.).
+        await cargarProductosDesdeAPI();
         cargarTablaProductos();
     } catch (error) {
-        mostrarNotificacion("Error al guardar: " + error.message, "error");
+        // Errores del backend (validación COP, permisos, etc.) se muestran aquí.
+        var erroresDiv = document.getElementById("errores-formulario");
+        erroresDiv.innerHTML = "• " + error.message;
+        erroresDiv.classList.remove("oculto");
     } finally {
         ocultarLoader();
     }
