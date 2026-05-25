@@ -1,7 +1,19 @@
 
-// URL base del backend REST (Express). En desarrollo apunta a tu máquina local.
-// En producción (Hito 5) cambiarás esto por la URL pública del backend desplegado.
-var API_URL = "http://localhost:3000/api";
+// URL base del backend REST (Express).
+// Detecta automáticamente el entorno:
+//   - En local (localhost / 127.0.0.1 / Live Server): usa el backend local.
+//   - En producción (cualquier otro dominio): usa la URL del backend desplegado.
+// IMPORTANTE: reemplaza la URL de producción por la de TU backend en Render
+// una vez lo hayas desplegado (termina en .onrender.com).
+var API_URL = (function () {
+    var host = window.location.hostname;
+    var esLocal = host === "localhost" || host === "127.0.0.1" || host === "";
+    if (esLocal) {
+        return "http://localhost:3000/api";
+    }
+    // <-- CAMBIA ESTA URL por la de tu backend desplegado en Render:
+    return "https://papel-y-luna-backend.onrender.com/api";
+})();
 
 // ---- VARIABLES GLOBALES ----
 
