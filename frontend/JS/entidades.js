@@ -25,7 +25,7 @@ function cargarTablaClientes() {
                 '<td>' +
                     '<div style="display:flex;gap:5px">' +
                         '<button class="btn-tabla" onclick="abrirFormularioEntidad(\'cliente\', \'' + c.id + '\')">✎ Editar</button>' +
-                        '<button class="btn-tabla peligro" onclick="abrirModalEliminarEntidad(\'cliente\', \'' + c.id + '\')">✕ Eliminar</button>' +
+                        botonEliminarSiAdmin("abrirModalEliminarEntidad(\'cliente\', \'" + c.id + "\')") +
                     '</div>' +
                 '</td>' +
             '</tr>';
@@ -62,7 +62,7 @@ function cargarTablaProveedores() {
                 '<td>' +
                     '<div style="display:flex;gap:5px">' +
                         '<button class="btn-tabla" onclick="abrirFormularioEntidad(\'proveedor\', \'' + p.id + '\')">✎ Editar</button>' +
-                        '<button class="btn-tabla peligro" onclick="abrirModalEliminarEntidad(\'proveedor\', \'' + p.id + '\')">✕ Eliminar</button>' +
+                        botonEliminarSiAdmin("abrirModalEliminarEntidad(\'proveedor\', \'" + p.id + "\')") +
                     '</div>' +
                 '</td>' +
             '</tr>';
@@ -97,7 +97,7 @@ function cargarTablaCategorias() {
                 '<td>' +
                     '<div style="display:flex;gap:5px">' +
                         '<button class="btn-tabla" onclick="abrirFormularioEntidad(\'categoria\', \'' + cat.id + '\')">✎ Editar</button>' +
-                        '<button class="btn-tabla peligro" onclick="abrirModalEliminarEntidad(\'categoria\', \'' + cat.id + '\')">✕ Eliminar</button>' +
+                        botonEliminarSiAdmin("abrirModalEliminarEntidad(\'categoria\', \'" + cat.id + "\')") +
                     '</div>' +
                 '</td>' +
             '</tr>';

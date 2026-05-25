@@ -63,6 +63,13 @@ function cerrarModalReembolso() {
 function construirModalReembolso(venta) {
     document.getElementById("reembolso-venta-id").textContent = venta.id;
 
+    // Factor de descuento de la venta: total pagado / subtotal sin descuento.
+    // Se usa para que el monto mostrado coincida con el que reembolsará el
+    // backend (proporcional a lo que el cliente realmente pagó).
+    var descMonto = venta.descuentoMonto || 0;
+    var subtotalSinDesc = venta.total + descMonto;
+    window.__factorReembolso = subtotalSinDesc > 0 ? venta.total / subtotalSinDesc : 1;
+
     // Mapa de cuánto ya se reembolsó por ventaItemId (de los reembolsos previos).
     var yaReembolsado = {};
     (venta.reembolsos || []).forEach(function (r) {
@@ -103,9 +110,11 @@ function construirModalReembolso(venta) {
     recalcularMontoReembolso();
 }
 
-// Suma el monto a reembolsar según las cantidades escritas.
+// Suma el monto a reembolsar según las cantidades escritas, aplicando el
+// factor de descuento de la venta (para reflejar lo que el cliente pagó).
 function recalcularMontoReembolso() {
     var filas = document.querySelectorAll("#filas-reembolso tr");
+    var factor = window.__factorReembolso || 1;
     var monto = 0;
     filas.forEach(function (fila) {
         var precio = parseInt(fila.getAttribute("data-precio"));
@@ -115,7 +124,7 @@ function recalcularMontoReembolso() {
         // Clamp visual: no permitir más de lo disponible.
         if (cant > disponible) { cant = disponible; input.value = disponible; }
         if (cant < 0) { cant = 0; input.value = 0; }
-        monto += precio * cant;
+        monto += Math.round(precio * cant * factor);
     });
     document.getElementById("reembolso-monto-total").textContent = formatearPrecio(monto);
 }
@@ -194,6 +203,9 @@ async function abrirCorreccion(idVenta) {
             id: venta.id,
             metodoPago: venta.metodoPago,
             clienteId: venta.clienteId || "",
+            // Descuento que tenía la venta: lo conservamos para mostrarlo y para
+            // que el total mostrado coincida con lo que el backend recalculará.
+            descuentoId: venta.descuentoId || null,
             items: (venta.items || []).map(function (it) {
                 return { productoId: it.productoId, nombre: it.nombreSnapshot, precio: it.precioUnitario, cantidad: it.cantidad };
             })
@@ -227,10 +239,10 @@ function construirVistaCorreccion() {
 
 function renderItemsCorreccion() {
     var filas = "";
-    var total = 0;
+    var subtotalBruto = 0;
     correccionActual.items.forEach(function (it, idx) {
         var subtotal = it.precio * it.cantidad;
-        total += subtotal;
+        subtotalBruto += subtotal;
         filas +=
             '<tr>' +
                 '<td>' + it.nombre + '</td>' +
@@ -244,7 +256,36 @@ function renderItemsCorreccion() {
             '</tr>';
     });
     document.getElementById("filas-correccion").innerHTML = filas;
-    document.getElementById("correccion-total").textContent = formatearPrecio(total);
+
+    // Calcular descuento sobre el nuevo subtotal (igual que hará el backend),
+    // para que el total mostrado coincida con el que quedará guardado.
+    var montoDescuento = calcularDescuentoCorreccion(subtotalBruto);
+    var totalFinal = subtotalBruto - montoDescuento;
+
+    // Mostrar el desglose: si hay descuento, lo indicamos.
+    var infoDesc = document.getElementById("correccion-info-descuento");
+    if (montoDescuento > 0) {
+        infoDesc.textContent = "Subtotal " + formatearPrecio(subtotalBruto) +
+            " · Descuento −" + formatearPrecio(montoDescuento);
+        infoDesc.classList.remove("oculto");
+    } else {
+        infoDesc.classList.add("oculto");
+    }
+    document.getElementById("correccion-total").textContent = formatearPrecio(totalFinal);
+}
+
+// Calcula el monto de descuento que aplicaría sobre un subtotal dado, usando
+// el descuento que tenía la venta (mismo criterio que el backend al corregir).
+function calcularDescuentoCorreccion(subtotal) {
+    if (!correccionActual.descuentoId) return 0;
+    var desc = null;
+    for (var i = 0; i < listaDescuentos.length; i++) {
+        if (listaDescuentos[i].id == correccionActual.descuentoId) { desc = listaDescuentos[i]; break; }
+    }
+    if (!desc) return 0;
+    var monto = desc.tipo === "porcentaje" ? Math.round((subtotal * desc.valor) / 100) : desc.valor;
+    if (monto > subtotal) monto = subtotal;
+    return monto;
 }
 
 function cambiarCantidadCorreccion(idx, valor) {
@@ -322,14 +363,15 @@ async function guardarCorreccion() {
     var cuerpo = {
         metodoPago: metodo,
         clienteId: clienteId ? parseInt(clienteId) : null,
+        descuentoId: correccionActual.descuentoId || null,
         items: correccionActual.items.map(function (it) {
             return { productoId: it.productoId, cantidad: it.cantidad };
         }),
         motivo: document.getElementById("correccion-motivo").value.trim() || null
     };
 
-    // Si el método es efectivo, el backend exige efectivoRecibido. Pedimos un
-    // valor que cubra el nuevo total (usamos el total calculado).
+    // Si el método es efectivo, el backend exige efectivoRecibido. Usamos el
+    // total CON descuento (el que se muestra), no el subtotal bruto.
     if (metodo === "efectivo") {
         var totalTexto = document.getElementById("correccion-total").textContent.replace(/[^0-9]/g, "");
         cuerpo.efectivoRecibido = parseInt(totalTexto) || 0;

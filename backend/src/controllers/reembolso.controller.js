@@ -91,6 +91,21 @@ exports.create = async (req, res, next) => {
     const mapaItems = {};
     for (const vi of venta.items) mapaItems[vi.id] = vi;
 
+    // FACTOR DE DESCUENTO DE LA VENTA.
+    // El cliente no pagó el precio de lista, sino el total ya con descuento.
+    // Para reembolsar de forma JUSTA (lo que el cliente realmente pagó), cada
+    // ítem se reembolsa proporcionalmente:
+    //     montoItem = precioUnitario * cantidad * factor
+    // donde factor = total pagado / subtotal sin descuento.
+    // El subtotal sin descuento = total + descuentoMonto (la venta guarda el
+    // total ya descontado y el monto de descuento por separado).
+    // Si no hubo descuento, factor = 1 y nada cambia.
+    const descuentoMonto = venta.descuentoMonto || 0;
+    const subtotalSinDescuento = venta.total + descuentoMonto;
+    const factorDescuento = subtotalSinDescuento > 0
+      ? venta.total / subtotalSinDescuento
+      : 1;
+
     // Si es total y no mandan items, generamos el reembolso de TODO lo que
     // queda por reembolsar de cada item.
     if (tipo === 'total' && (!items || items.length === 0)) {
@@ -145,8 +160,10 @@ exports.create = async (req, res, next) => {
         });
       }
 
-      // Monto = precio unitario que se cobró * cantidad reembolsada.
-      const montoItem = vi.precioUnitario * item.cantidad;
+      // Monto = precio cobrado * cantidad, ajustado por el factor de descuento
+      // de la venta (para devolver lo que el cliente realmente pagó, no el
+      // precio de lista). Redondeamos a entero (COP sin decimales).
+      const montoItem = Math.round(vi.precioUnitario * item.cantidad * factorDescuento);
       montoTotal += montoItem;
 
       // RF-64 / RN-05: devolver stock solo si retornaInventario y el producto

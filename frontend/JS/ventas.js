@@ -414,7 +414,6 @@ function abrirModalCobro() {
     document.getElementById("total-en-modal").textContent = formatearPrecio(total);
     document.getElementById("valor-recibido").value = "";
     document.getElementById("mostrar-cambio").textContent = formatearPrecio(0);
-    document.getElementById("input-cliente-debe").value = "";
 
     // Cargo clientes en el select del modal
     var selectCliente = document.getElementById("select-cliente-cobro");
@@ -531,7 +530,10 @@ function calcularCambio() {
 }
 
 async function confirmarCobro() {
-    var total = calcularTotal();
+    // Total CON descuento aplicado (si hay uno seleccionado). El efectivo debe
+    // cubrir este total, no el precio sin descuento. Antes se validaba contra
+    // calcularTotal() (sin descuento), lo que exigía pagar de más.
+    var total = calcularTotalConDescuentoActual();
     var metodo = document.querySelector('input[name="metodo"]:checked').value;
     var clienteId = document.getElementById("select-cliente-cobro").value;
 

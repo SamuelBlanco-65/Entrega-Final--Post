@@ -139,9 +139,18 @@ function cerrarSesion(fueSesionExpirada) {
     cerrandoSesion = false;
 }
 
-// ¿El usuario actual es ADMIN? (se usará en la Fase 6 para roles en la UI).
+// ¿El usuario actual es ADMIN? (se usa para ocultar acciones solo-admin).
 function esAdmin() {
     return usuarioActual != null && usuarioActual.role === "ADMIN";
+}
+
+// Devuelve el HTML de un botón "Eliminar" SOLO si el usuario es ADMIN; si es
+// cajero (USER), devuelve cadena vacía. Centraliza la regla de roles para los
+// botones de borrado, que el backend además bloquea con 403. El parámetro
+// onclickAttr es el contenido del onclick (sin las comillas externas).
+function botonEliminarSiAdmin(onclickAttr, etiqueta) {
+    if (!esAdmin()) return "";
+    return '<button class="btn-tabla peligro" onclick="' + onclickAttr + '">' + (etiqueta || "✕ Eliminar") + '</button>';
 }
 
 

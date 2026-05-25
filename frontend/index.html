@@ -343,6 +343,7 @@
                 <option value="">+ Agregar producto…</option>
             </select>
         </div>
+        <div id="correccion-info-descuento" class="oculto" style="text-align:right;font-size:13px;color:#2d7a4f;margin-top:8px"></div>
         <div class="total-correccion">Total: <strong id="correccion-total">$ 0</strong></div>
         <label class="etiqueta-campo" style="margin-top:12px">Motivo de la corrección (opcional)</label>
         <input type="text" id="correccion-motivo" class="campo-input" placeholder="Ej. El cliente cambió de producto">
@@ -460,12 +461,10 @@
                 </div>
             </div>
             <div id="seccion-debe" class="oculto">
-                <label class="etiqueta-campo">Cliente registrado (recomendado):</label>
-                <select id="select-cliente-debe" class="campo-input" style="margin-bottom:8px">
+                <label class="etiqueta-campo">Cliente registrado (obligatorio para "Debe"):</label>
+                <select id="select-cliente-debe" class="campo-input">
                     <option value="">Selecciona un cliente registrado</option>
                 </select>
-                <label class="etiqueta-campo">O escribe el nombre:</label>
-                <input type="text" id="input-cliente-debe" class="campo-input" placeholder="Nombre del cliente si no está registrado">
             </div>
         </div>
         <div class="modal-pie">

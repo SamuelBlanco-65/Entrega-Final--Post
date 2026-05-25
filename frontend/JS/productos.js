@@ -38,7 +38,7 @@ function cargarTablaProductos() {
                 '<td>' +
                     '<div style="display:flex;gap:5px">' +
                         '<button class="btn-tabla" onclick="abrirFormularioProducto(\'' + prod.id + '\')">&#9998; Editar</button>' +
-                        '<button class="btn-tabla peligro" onclick="abrirModalEliminar(\'' + prod.id + '\')">&#10005; Eliminar</button>' +
+                        botonEliminarSiAdmin("abrirModalEliminar(\'" + prod.id + "\')", "&#10005; Eliminar") +
                     '</div>' +
                 '</td>' +
             '</tr>';
