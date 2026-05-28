@@ -247,24 +247,34 @@ function validarCorreo(correo) {
     return null; // Sin errores
 }
 
-// Valida un numero de telefono colombiano
-// Acepta: moviles (3XX), fijos (60X), con o sin indicativo internacional
+// Valida un número de teléfono colombiano de forma realista.
+// Acepta:
+//   - Celular: 10 dígitos que empiezan en 3 (ej. 3001234567)
+//   - Fijo nacional: 10 dígitos que empiezan en 60 (ej. 6011234567)
+//   - Fijo local: 7 dígitos (ej. 1234567)
+//   - Cualquiera de los anteriores con prefijo +57 / 57.
+// Ignora espacios, guiones y paréntesis al contar.
 function validarTelefono(telefono) {
     telefono = String(telefono).trim();
+    if (telefono == "") return null; // El teléfono es opcional
 
-    if (telefono == "") return null; // El telefono es opcional
+    // Quitar separadores comunes para analizar solo dígitos (y un + inicial).
+    var limpio = telefono.replace(/[\s\-\(\)\.]/g, "");
 
-    // Elimino espacios, guiones y parentesis para contar digitos
-    var soloNumeros = telefono.replace(/[\s\-\(\)\+]/g, "");
+    // Quitar el indicativo de Colombia si viene (+57 o 57 al inicio).
+    limpio = limpio.replace(/^\+?57/, "");
 
-    if (!/^\d+$/.test(soloNumeros)) {
+    if (!/^\d+$/.test(limpio)) {
         return "El teléfono solo puede contener números, espacios, guiones y paréntesis.";
     }
 
-    // Con indicativo internacional de Colombia (+57) son 12 digitos
-    // Sin indicativo: movil 10 digitos, fijo 7-8 digitos
-    if (soloNumeros.length < 7 || soloNumeros.length > 12) {
-        return "El teléfono debe tener entre 7 y 12 dígitos.";
+    // Validar contra los formatos colombianos reales.
+    var esCelular = /^3\d{9}$/.test(limpio);       // 10 dígitos, empieza en 3
+    var esFijoNacional = /^60\d{8}$/.test(limpio); // 10 dígitos, empieza en 60
+    var esFijoLocal = /^\d{7}$/.test(limpio);      // 7 dígitos
+
+    if (!esCelular && !esFijoNacional && !esFijoLocal) {
+        return "El teléfono no parece válido para Colombia. Usa un celular (10 dígitos, ej. 3001234567) o un fijo (7 o 10 dígitos).";
     }
 
     return null;

@@ -17,6 +17,12 @@ function crearNuevaVenta() {
 // Retoma la venta guardada como abierta
 function retomarVentaAbierta() {
     if (ventaAbierta == null) return;
+    // Si el carrito actual tiene productos, retomar los descartaría. Avisamos.
+    if (ventaActual.items.length > 0) {
+        if (!confirm("Tienes una venta en curso con productos. Si retomas la venta guardada, se descartará la venta actual. ¿Continuar?")) {
+            return;
+        }
+    }
     ventaActual = ventaAbierta;
     borrarVentaAbiertaLocal();
     document.getElementById("id-venta-actual").textContent = ventaActual.id;
@@ -25,22 +31,32 @@ function retomarVentaAbierta() {
     mostrarNotificacion("Venta retomada correctamente", "exito");
 }
 
-// Guarda la venta actual como "abierta" para retomar despues
+// Guarda la venta actual como "abierta" para retomar después.
 function guardarVentaComoAbierta() {
     if (ventaActual.items.length == 0) {
         mostrarNotificacion("No hay productos en la venta para guardar", "error");
         return;
     }
+    // Solo se mantiene UNA venta en pausa. Si ya hay una guardada, avisamos
+    // que se reemplazará (no se acumulan varias).
+    cargarVentaAbiertaLocal();
+    if (ventaAbierta != null) {
+        if (!confirm("Ya tienes una venta guardada. Si guardas esta, reemplazará la anterior. ¿Continuar?")) {
+            return;
+        }
+    }
     guardarVentaAbiertaLocal();
-    mostrarNotificacion("Venta guardada — puedes retomar cuando quieras");
+    mostrarNotificacion("Venta guardada — puedes retomarla cuando quieras");
     crearNuevaVenta();
 }
 
-// Muestra u oculta el boton de retomar segun si hay venta abierta
+// Muestra u oculta el botón de retomar según si hay una venta guardada.
+// Se muestra SIEMPRE que exista una venta en pausa, aunque el carrito actual
+// tenga productos, para que el cajero nunca pierda de vista la venta guardada.
 function actualizarBotonVentaAbierta() {
     cargarVentaAbiertaLocal();
     var btn = document.getElementById("btn-retomar-venta");
-    if (ventaAbierta != null && ventaActual.items.length == 0) {
+    if (ventaAbierta != null) {
         btn.classList.remove("oculto");
     } else {
         btn.classList.add("oculto");
@@ -486,17 +502,21 @@ function cerrarModalCobro() {
 function cambiarMetodoPago() {
     var metodo = document.querySelector('input[name="metodo"]:checked').value;
     document.getElementById("seccion-efectivo").classList.add("oculto");
-    document.getElementById("seccion-debe").classList.add("oculto");
+    document.getElementById("aviso-debe").classList.add("oculto");
+
+    var labelCliente = document.getElementById("label-cliente-cobro");
+
     if (metodo == "efectivo") {
         document.getElementById("seccion-efectivo").classList.remove("oculto");
+        labelCliente.textContent = "Cliente (opcional)";
     } else if (metodo == "debe") {
-        // Poblo el select de clientes registrados
-        var selectDebe = document.getElementById("select-cliente-debe");
-        selectDebe.innerHTML = '<option value="">Selecciona un cliente registrado</option>';
-        for (var i = 0; i < listaClientes.length; i++) {
-            selectDebe.innerHTML += '<option value="' + listaClientes[i].id + '">' + listaClientes[i].nombre + '</option>';
-        }
-        document.getElementById("seccion-debe").classList.remove("oculto");
+        // En "debe", el MISMO selector de cliente de arriba pasa a ser
+        // obligatorio. No hay un segundo selector: evitamos la duplicación.
+        labelCliente.textContent = "Cliente (obligatorio para \"Debe\")";
+        document.getElementById("aviso-debe").classList.remove("oculto");
+    } else {
+        // nequi
+        labelCliente.textContent = "Cliente (opcional)";
     }
 }
 
@@ -555,7 +575,9 @@ async function confirmarCobro() {
 
     // Validación de efectivo: debe cubrir el total (el backend recalcula y
     // valida también, pero damos feedback inmediato aquí).
-    if (metodo === "efectivo") {
+    // Caso especial: si el total es 0 (descuento del 100%), no se cobra nada;
+    // se permite cerrar la venta sin pedir efectivo.
+    if (metodo === "efectivo" && total > 0) {
         var valorRecibidoTexto = document.getElementById("valor-recibido").value;
         var errorRecibidoCobro = validarPrecioCOP(valorRecibidoTexto, "El valor recibido");
         if (errorRecibidoCobro) {
@@ -578,24 +600,25 @@ async function confirmarCobro() {
         })
     };
 
-    // Cliente: el backend usa clienteId numérico. Para "debe" es obligatorio.
+    // Cliente: el backend usa clienteId numérico. En "debe" es OBLIGATORIO;
+    // usamos el mismo selector de cliente de arriba (unificado).
     if (metodo === "debe") {
-        // En "debe" exigimos un cliente REGISTRADO (el backend no acepta
-        // nombres de texto libre, solo clienteId). Tomamos el del selector.
-        var clienteDebe = document.getElementById("select-cliente-debe").value;
-        if (!clienteDebe) {
-            mostrarNotificacion("Para 'Debe' debes seleccionar un cliente registrado.", "error");
+        if (!clienteId) {
+            mostrarNotificacion("Para una venta 'Debe' debes elegir un cliente registrado.", "error");
             return;
         }
-        cuerpo.clienteId = parseInt(clienteDebe);
+        cuerpo.clienteId = parseInt(clienteId);
     } else if (clienteId) {
         // Para efectivo/nequi el cliente es opcional.
         cuerpo.clienteId = parseInt(clienteId);
     }
 
     // Efectivo recibido (el backend valida que cubra el total y calcula cambio).
+    // Si el total es 0, enviamos 0 (no se cobra nada).
     if (metodo === "efectivo") {
-        cuerpo.efectivoRecibido = parseInt(document.getElementById("valor-recibido").value);
+        cuerpo.efectivoRecibido = total > 0
+            ? parseInt(document.getElementById("valor-recibido").value)
+            : 0;
     }
 
     // Descuento opcional (si el modal tiene selector de descuento).
@@ -617,6 +640,10 @@ async function confirmarCobro() {
 
         idUltimaVentaCerrada = ventaCreada.id;
         borrarVentaAbiertaLocal();
+        // Reiniciamos el carrito a una venta nueva y vacía: la venta ya se
+        // registró. Sin esto, al navegar a otra sección y volver a "Nueva
+        // Venta", reaparecían los productos ya vendidos.
+        crearNuevaVenta();
         cerrarModalCobro();
         mostrarVistaConfirmacion(ventaCreada.id);
     } catch (error) {

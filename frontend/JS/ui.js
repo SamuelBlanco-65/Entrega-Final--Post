@@ -62,3 +62,28 @@ function imgFallback(img, tam) {
         "justify-content:center;font-size:" + Math.round(tam*0.4) + "px;flex-shrink:0;";
     if (img.parentNode) img.parentNode.replaceChild(ph, img);
 }
+
+// --- Menú hamburguesa para móvil ---
+// Abre/cierra el panel de navegación en pantallas pequeñas. En desktop el
+// sidebar siempre está visible y estas funciones no tienen efecto visible.
+function alternarMenuMovil() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("overlay-menu");
+    var abierto = sidebar.classList.toggle("menu-abierto");
+    if (overlay) overlay.classList.toggle("visible", abierto);
+}
+
+function cerrarMenuMovil() {
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("overlay-menu");
+    if (sidebar) sidebar.classList.remove("menu-abierto");
+    if (overlay) overlay.classList.remove("visible");
+}
+
+// Al tocar cualquier botón de navegación en móvil, cerrar el menú automáticamente.
+document.addEventListener("DOMContentLoaded", function () {
+    var botones = document.querySelectorAll(".boton-nav");
+    for (var i = 0; i < botones.length; i++) {
+        botones[i].addEventListener("click", cerrarMenuMovil);
+    }
+});

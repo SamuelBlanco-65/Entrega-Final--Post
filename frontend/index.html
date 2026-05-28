@@ -40,6 +40,14 @@
 <!-- Todo el POS vive aquí dentro; se oculta mientras se muestra el login. -->
 <div id="app-completa" class="oculto">
 
+<!-- Barra superior SOLO para móvil: título + botón hamburguesa -->
+<div id="barra-movil">
+    <span id="barra-movil-titulo">Papel y Luna</span>
+    <button id="boton-hamburguesa" onclick="alternarMenuMovil()" aria-label="Abrir menú">☰</button>
+</div>
+<!-- Fondo oscuro detrás del menú abierto en móvil -->
+<div id="overlay-menu" onclick="cerrarMenuMovil()"></div>
+
 <!-- SIDEBAR -->
 <div id="sidebar">
     <div id="logo-sidebar">
@@ -441,7 +449,7 @@
                 <strong id="total-en-modal">$ 0</strong>
             </div>
 
-            <label class="etiqueta-campo">Cliente (opcional)</label>
+            <label class="etiqueta-campo" id="label-cliente-cobro">Cliente (opcional)</label>
             <select id="select-cliente-cobro" class="campo-input" style="margin-bottom:14px">
                 <option value="">Sin cliente</option>
             </select>
@@ -476,11 +484,8 @@
                     <strong id="mostrar-cambio">$ 0</strong>
                 </div>
             </div>
-            <div id="seccion-debe" class="oculto">
-                <label class="etiqueta-campo">Cliente registrado (obligatorio para "Debe"):</label>
-                <select id="select-cliente-debe" class="campo-input">
-                    <option value="">Selecciona un cliente registrado</option>
-                </select>
+            <div id="aviso-debe" class="oculto" style="font-size:13px;color:var(--color-naranja);margin-top:4px">
+                ℹ️ Para una venta "Debe" debes elegir arriba un cliente registrado.
             </div>
         </div>
         <div class="modal-pie">

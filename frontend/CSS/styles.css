@@ -311,105 +311,137 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
    ============================================= */
 
 /* TABLET - 768px */
+/* Elementos del menú móvil: OCULTOS en desktop por defecto. Solo aparecen
+   dentro del media query de móvil. */
+#barra-movil { display: none; }
+#overlay-menu { display: none; }
+
 @media (max-width: 768px) {
 
     body {
         flex-direction: column;
         height: auto;
-        overflow: auto;
+        min-height: 100vh;
+        overflow: visible;
+        overflow-y: auto;
     }
 
-    /* #app-completa es ahora el contenedor flex (desde la Fase 1). En móvil
-       debe apilar el sidebar arriba y el contenido abajo, en columna. Sin esto,
-       el sidebar y el contenido siguen lado a lado y la app se ve inutilizable. */
+    /* #app-completa pasa a columna; la barra móvil va arriba y el contenido
+       ocupa toda la pantalla. El sidebar se saca del flujo (se vuelve panel). */
     #app-completa {
         flex-direction: column;
         height: auto;
         min-height: 100vh;
         overflow: visible;
+        display: block;
     }
 
-    /* El sidebar se convierte en barra horizontal arriba */
-    #sidebar {
-        width: 100%;
-        min-height: auto;
-        flex-direction: row;
-        flex-wrap: wrap;
+    /* Barra superior delgada con título + botón hamburguesa */
+    #barra-movil {
+        display: flex;
         align-items: center;
-        padding: 8px;
-        gap: 4px;
-    }
-
-    #logo-sidebar {
-        width: 100%;
-        padding: 10px 12px 8px;
-        margin-bottom: 0;
-        border-bottom: none;
-        border-right: none;
-    }
-
-    #logo-sidebar h2 { font-size: 14px; }
-
-    .seccion-nav { display: none; }
-
-    .boton-nav {
-        width: auto;
-        padding: 8px 12px;
-        font-size: 13px;
-        margin: 2px;
-        flex: 1 1 auto;
-        min-width: 80px;
-        text-align: center;
-    }
-
-    /* El sidebar (barra superior) puede tener scroll horizontal si no caben
-       todos los botones, en vez de amontonarse. */
-    #sidebar {
+        justify-content: space-between;
+        background-color: var(--color-cafe-oscuro, #2b2622);
+        color: #fff;
+        padding: 12px 16px;
         position: sticky;
         top: 0;
-        z-index: 50;
+        z-index: 60;
+    }
+    #barra-movil-titulo { font-weight: 700; font-size: 16px; }
+    #boton-hamburguesa {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
     }
 
+    /* El sidebar se convierte en un PANEL deslizable, oculto a la izquierda.
+       Aparece al añadir la clase .menu-abierto (botón hamburguesa). */
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 78vw;
+        max-width: 320px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        padding: 16px 12px;
+        gap: 4px;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 70;
+    }
+    #sidebar.menu-abierto {
+        transform: translateX(0);
+    }
+
+    /* Fondo oscuro detrás del panel cuando está abierto */
+    #overlay-menu {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+        z-index: 65;
+    }
+    #overlay-menu.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Dentro del panel, los botones vuelven a ser verticales y cómodos */
+    #logo-sidebar {
+        width: 100%;
+        padding: 4px 8px 12px;
+        margin-bottom: 8px;
+    }
+    .seccion-nav { display: block; }
+    .boton-nav {
+        width: 100%;
+        text-align: left;
+        padding: 11px 14px;
+        font-size: 15px;
+        margin: 1px 0;
+    }
+
+    /* El contenido ocupa todo el ancho, sin que el sidebar le robe espacio */
     #contenido-principal {
         padding: 16px;
         overflow-y: visible;
+        width: 100%;
     }
 
     /* Carrito en columna en vez de grid */
-    #contenedor-venta {
-        grid-template-columns: 1fr;
-    }
-
-    #panel-totales {
-        order: -1;
-    }
+    #contenedor-venta { grid-template-columns: 1fr; }
+    #panel-totales { order: -1; }
 
     .encabezado-vista {
         flex-direction: column;
         gap: 12px;
         align-items: flex-start;
     }
+    .botones-encabezado { width: 100%; flex-wrap: wrap; }
+    .botones-encabezado button { flex: 1; text-align: center; min-width: 100px; }
 
-    .botones-encabezado {
-        width: 100%;
-        flex-wrap: wrap;
-    }
-
-    .botones-encabezado button {
-        flex: 1;
-        text-align: center;
-        min-width: 100px;
-    }
-
-    /* Tablas con scroll horizontal */
+    /* Tablas: scroll horizontal SOLO en su contenedor, sin romper el layout.
+       Envolvemos visualmente con un borde para que se note que hay más a los lados. */
     table {
         display: block;
         overflow-x: auto;
         white-space: nowrap;
         -webkit-overflow-scrolling: touch;
+        max-width: 100%;
     }
 
-    /* Modales ocupan casi toda la pantalla en móvil y permiten scroll */
     .modal-caja {
         max-width: 95vw !important;
         width: 95vw;
@@ -418,44 +450,24 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
         margin: 5vh auto;
     }
 
-    /* Login se adapta */
-    .login-caja {
-        width: 90vw;
-        padding: 28px 20px;
-    }
+    .login-caja { width: 90vw; padding: 28px 20px; }
 
-    /* Botones de acción en tablas: que no se amontonen */
-    .btn-tabla {
-        display: inline-block;
-        margin: 2px;
-    }
+    .btn-tabla { display: inline-block; margin: 2px; }
 
-    /* Campos en fila (corrección, reportes) pasan a columna */
-    .campos-fila {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    /* Tarjetas de reporte en columna */
-    .reporte-tarjetas {
-        flex-direction: column;
-    }
-
-    /* Formulario de compras en columna */
-    .fila-compra {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
+    .campos-fila { flex-direction: column; gap: 10px; }
+    .reporte-tarjetas { flex-direction: column; }
+    .fila-compra { grid-template-columns: 1fr 1fr; gap: 8px; }
 }
 
 /* MOVIL - 480px */
 @media (max-width: 480px) {
 
-    #logo-sidebar h2 { font-size: 13px; }
+    #logo-sidebar h2 { font-size: 15px; }
 
+    /* En el panel deslizable, los botones siguen cómodos al tacto */
     .boton-nav {
-        font-size: 11px;
-        padding: 6px 10px;
+        font-size: 14px;
+        padding: 10px 12px;
     }
 
     #contenido-principal { padding: 12px; }

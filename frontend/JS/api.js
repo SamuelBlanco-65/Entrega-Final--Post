@@ -42,8 +42,11 @@ async function apiRequest(metodo, ruta, body) {
         throw new Error("No se pudo conectar con el servidor. ¿Está encendido el backend?");
     }
 
-    // 401 = no autenticado / token vencido -> cerrar sesión y volver al login.
-    if (respuesta.status === 401) {
+    // 401 = no autenticado / token vencido.
+    // EXCEPCIÓN: en la ruta /login, un 401 significa "credenciales incorrectas",
+    // NO "sesión expirada". En ese caso dejamos que el error siga su curso para
+    // que la pantalla de login muestre el mensaje adecuado.
+    if (respuesta.status === 401 && ruta !== "/login") {
         cerrarSesion(true); // true = fue por sesión expirada
         throw new Error("Tu sesión expiró. Inicia sesión de nuevo.");
     }
@@ -189,7 +192,17 @@ async function iniciarSesion() {
         ocultarVistaLogin();
         await iniciarAplicacion();
     } catch (error) {
-        errorDiv.textContent = error.message;
+        // Mensaje claro según el tipo de error. Un 401 significa usuario o
+        // contraseña incorrectos; otros errores suelen ser de conexión.
+        var msg = error.message || "";
+        if (msg.indexOf("401") !== -1 ||
+            /credencial|invalid|incorrect|unauthor/i.test(msg)) {
+            errorDiv.textContent = "Usuario o contraseña incorrectos.";
+        } else if (/fetch|network|conexión|conectar|failed/i.test(msg)) {
+            errorDiv.textContent = "No se pudo conectar con el servidor. Intenta de nuevo en unos segundos.";
+        } else {
+            errorDiv.textContent = msg || "No se pudo iniciar sesión.";
+        }
         errorDiv.classList.remove("oculto");
     } finally {
         boton.disabled = false;
