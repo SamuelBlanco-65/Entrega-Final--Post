@@ -242,19 +242,20 @@ async function cargarTodosLosDatos() {
     ]);
 }
 
-// ---- DESCUENTOS (Hito 2, usados en el cobro - Fase 5) ----
+// ---- DESCUENTOS (Hito 2, usados en el cobro y en su pantalla de gestión) ----
 async function cargarDescuentosDesdeAPI() {
     try {
         var datos = await apiGet("/descuentos");
-        // Solo descuentos activos sirven para aplicar a una venta.
-        listaDescuentos = datos
-            .filter(function (d) { return d.activo; })
-            .map(function (d) {
-                return { id: d.id, nombre: d.nombre, tipo: d.tipo, valor: Number(d.valor), activo: d.activo };
-            });
+        // Lista COMPLETA (activos e inactivos) para la pantalla de gestión.
+        listaDescuentosTodos = datos.map(function (d) {
+            return { id: d.id, nombre: d.nombre, tipo: d.tipo, valor: Number(d.valor), activo: d.activo };
+        });
+        // Solo activos: es la que usa el selector de descuento al cobrar.
+        listaDescuentos = listaDescuentosTodos.filter(function (d) { return d.activo; });
     } catch (error) {
-        // Si falla, dejamos la lista vacía (la venta simplemente no ofrecerá descuento).
+        // Si falla, dejamos las listas vacías (la venta simplemente no ofrecerá descuento).
         listaDescuentos = [];
+        listaDescuentosTodos = [];
     }
 }
 

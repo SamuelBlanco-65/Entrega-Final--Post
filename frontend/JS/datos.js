@@ -12,8 +12,8 @@ var API_URL = (function () {
         return "http://localhost:3000/api";
     }
     // <-- CAMBIA ESTA URL por la de tu backend desplegado en Render:
-    return "https://papel-y-luna-backend-final.onrender.com/api";
-})()
+    return "https://papel-y-luna-backend.onrender.com/api";
+})();
 
 // ---- VARIABLES GLOBALES ----
 
@@ -28,6 +28,7 @@ var listaClientes = [];
 var listaProveedores = [];
 var listaCategorias = [];
 var listaDescuentos = [];
+var listaDescuentosTodos = [];
 
 // La venta que está abierta en este momento
 var ventaActual = null;
