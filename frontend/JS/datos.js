@@ -11,8 +11,8 @@ var API_URL = (function () {
     if (esLocal) {
         return "http://localhost:3000/api";
     }
-    // <-- CAMBIA ESTA URL por la de tu backend desplegado en Render:
-    return "https://papel-y-luna-backend.onrender.com/api";
+    // URL del backend desplegado en Render:
+    return "https://papel-y-luna-backend-final.onrender.com/api";
 })();
 
 // ---- VARIABLES GLOBALES ----
