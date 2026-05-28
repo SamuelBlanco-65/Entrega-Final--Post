@@ -24,7 +24,7 @@ function cargarTablaProductos() {
 
         // Miniatura si el producto tiene imagen
         var imgHtml = prod.imagen && prod.imagen != ""
-            ? '<img src="' + prod.imagen + '" class="img-producto-tabla" onerror="this.style.display=\'none\'">'
+            ? '<img src="' + prod.imagen + '" class="img-producto-tabla" onerror="imgFallback(this,48)">'
             : '<div class="img-producto-placeholder">\u{1F4E6}</div>';
 
         html +=

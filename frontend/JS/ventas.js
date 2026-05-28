@@ -194,7 +194,7 @@ function actualizarVistaCarrito() {
             }
         }
         var imgCarritoHtml = imagenProducto != ""
-            ? '<img src="' + imagenProducto + '" class="img-carrito" onerror="this.style.display=\'none\'">'
+            ? '<img src="' + imagenProducto + '" class="img-carrito" onerror="imgFallback(this,44)">'
             : '<div class="img-carrito-placeholder">📦</div>';
 
         filasHTML +=
@@ -366,7 +366,7 @@ function mostrarResultadosBusqueda(resultados, textoBuscado) {
 
         // Miniatura del producto si tiene imagen
         var imgHtml = prod.imagen && prod.imagen != ""
-            ? '<img src="' + prod.imagen + '" class="img-resultado" onerror="this.style.display=\'none\'">'
+            ? '<img src="' + prod.imagen + '" class="img-resultado" onerror="imgFallback(this,42)">'
             : '<div class="img-resultado-placeholder">📦</div>';
 
         // Texto secundario: código · categoría · stock disponible. Mostrar el

@@ -319,6 +319,16 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
         overflow: auto;
     }
 
+    /* #app-completa es ahora el contenedor flex (desde la Fase 1). En móvil
+       debe apilar el sidebar arriba y el contenido abajo, en columna. Sin esto,
+       el sidebar y el contenido siguen lado a lado y la app se ve inutilizable. */
+    #app-completa {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
     /* El sidebar se convierte en barra horizontal arriba */
     #sidebar {
         width: 100%;
@@ -344,14 +354,25 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
 
     .boton-nav {
         width: auto;
-        padding: 7px 12px;
-        font-size: 12px;
+        padding: 8px 12px;
+        font-size: 13px;
         margin: 2px;
+        flex: 1 1 auto;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    /* El sidebar (barra superior) puede tener scroll horizontal si no caben
+       todos los botones, en vez de amontonarse. */
+    #sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
     }
 
     #contenido-principal {
         padding: 16px;
-        overflow-y: auto;
+        overflow-y: visible;
     }
 
     /* Carrito en columna en vez de grid */
@@ -385,6 +406,39 @@ tbody tr:hover td { background-color: var(--color-fondo-calido); }
         display: block;
         overflow-x: auto;
         white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Modales ocupan casi toda la pantalla en móvil y permiten scroll */
+    .modal-caja {
+        max-width: 95vw !important;
+        width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: 5vh auto;
+    }
+
+    /* Login se adapta */
+    .login-caja {
+        width: 90vw;
+        padding: 28px 20px;
+    }
+
+    /* Botones de acción en tablas: que no se amontonen */
+    .btn-tabla {
+        display: inline-block;
+        margin: 2px;
+    }
+
+    /* Campos en fila (corrección, reportes) pasan a columna */
+    .campos-fila {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Tarjetas de reporte en columna */
+    .reporte-tarjetas {
+        flex-direction: column;
     }
 
     /* Formulario de compras en columna */

@@ -51,3 +51,14 @@ function mostrarLoader(mensaje) {
 function ocultarLoader() {
     document.getElementById("loader-global").classList.add("oculto");
 }
+
+// Reemplaza una imagen que falló al cargar por un placeholder (caja 📦) del
+// mismo tamaño, para que el espacio se respete siempre. tam = lado en px.
+function imgFallback(img, tam) {
+    var ph = document.createElement("div");
+    ph.textContent = "📦";
+    ph.style.cssText = "width:" + tam + "px;height:" + tam + "px;background-color:var(--color-fondo-calido);" +
+        "border:1px solid var(--color-borde);border-radius:6px;display:flex;align-items:center;" +
+        "justify-content:center;font-size:" + Math.round(tam*0.4) + "px;flex-shrink:0;";
+    if (img.parentNode) img.parentNode.replaceChild(ph, img);
+}

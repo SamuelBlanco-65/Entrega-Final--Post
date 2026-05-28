@@ -90,9 +90,14 @@ exports.productosMasVendidos = async (req, res, next) => {
     const rango = construirRangoFechas(desde, hasta);
     if (!rango.ok) return res.status(400).json({ error: rango.error });
 
-    const { fn, col, literal } = sequelize.Sequelize;
+    const { fn, col } = sequelize.Sequelize;
 
     // Unimos VentaItem con su Venta para filtrar por fecha y excluir anuladas.
+    // NOTA PostgreSQL: Postgres es estricto con GROUP BY y con los alias de
+    // columnas agregadas. Por eso:
+    //  - referenciamos las columnas con su nombre simple (sin prefijo de modelo),
+    //  - en el ORDER BY usamos la MISMA expresión agregada (no el alias), porque
+    //    Postgres no permite ordenar por alias dentro de funciones igual que SQLite.
     const filas = await VentaItem.findAll({
       attributes: [
         'productoId',
@@ -107,8 +112,9 @@ exports.productosMasVendidos = async (req, res, next) => {
         where: { ...rango.where, estado: { [Op.ne]: 'anulada' } },
       }],
       group: ['VentaItem.productoId', 'VentaItem.nombreSnapshot'],
-      order: [[literal('cantidadVendida'), 'DESC']],
+      order: [[fn('SUM', col('VentaItem.cantidad')), 'DESC']],
       limit: limite,
+      subQuery: false,
       raw: true,
     });
 
