@@ -8,6 +8,8 @@
 module.exports = {
   async up(queryInterface) {
     const ahora = new Date();
+    const existe = await queryInterface.rawSelect('Productos', { limit: 1 }, ['id']);
+    if (existe) return;
     await queryInterface.bulkInsert('Productos', [
       // Cuadernos
       { nombre: 'Cuaderno argollado 100h cuadriculado', categoriaId: 1, unidadVenta: 'unidad', costo: 6500, precio: 9500, codigoInterno: 'PROD-0001', codigoBarras: null, controlInventario: true, stock: 24, imagen: null, createdAt: ahora, updatedAt: ahora },

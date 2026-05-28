@@ -3,6 +3,8 @@
 module.exports = {
   async up(queryInterface) {
     const ahora = new Date();
+    const existe = await queryInterface.rawSelect('Clientes', { limit: 1 }, ['id']);
+    if (existe) return;
     await queryInterface.bulkInsert('Clientes', [
       { nombre: 'Cliente Mostrador', telefono: null, correo: null, createdAt: ahora, updatedAt: ahora },
       { nombre: 'María Restrepo', telefono: '3104567890', correo: 'maria.r@gmail.com', createdAt: ahora, updatedAt: ahora },

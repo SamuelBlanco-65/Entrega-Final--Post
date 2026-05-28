@@ -10,6 +10,8 @@ module.exports = {
     // seguridad y velocidad. Cada hash tarda ~80ms en generar.
     const SALT_ROUNDS = 10;
 
+    const existe = await queryInterface.rawSelect('Usuarios', { limit: 1 }, ['id']);
+    if (existe) return;
     await queryInterface.bulkInsert('Usuarios', [
       {
         username: 'admin',

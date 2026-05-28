@@ -3,6 +3,8 @@
 module.exports = {
   async up(queryInterface) {
     const ahora = new Date();
+    const existe = await queryInterface.rawSelect('Proveedores', { limit: 1 }, ['id']);
+    if (existe) return;
     await queryInterface.bulkInsert('Proveedores', [
       { nombre: 'Distribuidora Papelera S.A.', nit: '900.111.222-3', telefono: '6014445566', correo: 'ventas@distpapelera.com', createdAt: ahora, updatedAt: ahora },
       { nombre: 'Bic Colombia', nit: '800.555.444-1', telefono: '6017778899', correo: 'pedidos@biccolombia.com', createdAt: ahora, updatedAt: ahora },

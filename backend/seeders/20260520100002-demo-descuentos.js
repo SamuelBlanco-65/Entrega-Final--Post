@@ -3,6 +3,8 @@
 module.exports = {
   async up(queryInterface) {
     const ahora = new Date();
+    const existe = await queryInterface.rawSelect('Descuentos', { limit: 1 }, ['id']);
+    if (existe) return;
     await queryInterface.bulkInsert('Descuentos', [
       { nombre: 'Promo 10%', tipo: 'porcentaje', valor: 10, activo: true, createdAt: ahora, updatedAt: ahora },
       { nombre: 'Promo 20% temporada escolar', tipo: 'porcentaje', valor: 20, activo: true, createdAt: ahora, updatedAt: ahora },
